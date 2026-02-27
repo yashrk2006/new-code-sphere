@@ -1,8 +1,8 @@
 import React from 'react';
 import {
-    Camera, AlertTriangle, Activity, Shield, Zap, Database, Brain,
-    LayoutDashboard, Video, Bell, Settings, Search, Menu, X, CheckCircle2,
-    MapPin, Radio, ChevronRight
+    Camera, AlertTriangle, Activity, Shield, Database, Brain,
+    LayoutDashboard, Video, Bell, Settings, Search, Menu, X,
+    MapPin, Radio
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
