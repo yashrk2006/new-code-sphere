@@ -54,11 +54,11 @@ export default function NotificationDropdown() {
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
-                        initial={{ opacity: 0, y: 8, scale: 0.97 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 8, scale: 0.97 }}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute right-0 mt-2 w-96 bg-[#0a1628] border border-slate-800 rounded-2xl shadow-2xl shadow-black/50 z-50 overflow-hidden"
+                        className="absolute right-0 top-full mt-2 w-96 bg-[#0a1628] border border-slate-800 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] z-[999] overflow-hidden"
                     >
                         {/* Header */}
                         <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">

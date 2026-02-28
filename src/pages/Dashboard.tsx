@@ -89,9 +89,9 @@ export default function DashboardLayout() {
             </aside>
 
             {/* Main Content Area */}
-            <main className="flex-1 flex flex-col min-w-0 bg-[#020617] overflow-hidden">
+            <main className="flex-1 flex flex-col min-w-0 bg-[#020617] relative z-0 overflow-y-auto overflow-x-hidden">
                 {/* Top Header */}
-                <header className="h-16 border-b border-slate-800 bg-[#040D21]/80 backdrop-blur-md shrink-0 flex items-center justify-between px-4 sm:px-8 shadow-sm">
+                <header className="relative z-[100] h-16 border-b border-slate-800 bg-[#040D21]/80 backdrop-blur-md shrink-0 flex items-center justify-between px-4 sm:px-8 shadow-sm">
                     <div className="flex items-center gap-4">
                         <button className="md:hidden p-2 text-slate-400 hover:text-white" onClick={() => setIsMobileMenuOpen(true)}>
                             <Menu className="w-5 h-5" />
