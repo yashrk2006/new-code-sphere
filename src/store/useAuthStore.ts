@@ -53,6 +53,9 @@ export const setupAxiosInterceptors = () => {
                 if (url.includes('/api/analytics')) mockData = { trends: Array.from({ length: 10 }, (_, i) => ({ time_bucket: new Date(Date.now() - i * 3600000).toISOString(), anomaly_count: Math.floor(Math.random() * 20) })).reverse(), zoneMetrics: [], accuracyMetrics: { avg_confidence: 0.88, false_positive_rate: 0.02 } };
                 if (url.includes('/api/settings')) mockData = { systemName: 'VisionAIoT', aiConfidenceThreshold: 85, alertRetentionDays: 30, enablePushNotifications: false, theme: 'dark' };
                 if (url.includes('/api/storage/stats')) mockData = { totalBytes: 100 * 1024 ** 3, usedBytes: 43.9 * 1024 ** 3, fileCount: 1420 };
+                if (url.includes('/api/notifications')) mockData = [
+                    { id: '1', title: 'System Online', message: 'VisionAIoT deployed successfully.', type: 'info', is_read: false, created_at: new Date().toISOString() }
+                ];
 
                 return { ...response, data: mockData };
             }

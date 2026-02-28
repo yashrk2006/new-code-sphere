@@ -2,10 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { Camera as CameraIcon } from 'lucide-react';
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 const fetchCameras = async () => {
     // Graceful fallback for demo if real API is down
     try {
-        const { data } = await axios.get('http://localhost:4000/api/cameras');
+        const { data } = await axios.get(`${API_BASE}/api/cameras`);
         return data;
     } catch (err) {
         console.warn("Real API offline, falling back to module mock array.");
