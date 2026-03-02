@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAlertStore } from '../store/useAlertStore';
+import { useAuthStore } from '../store/useAuthStore';
 import NotificationDropdown from '../components/NotificationDropdown';
 
 const MODULE_ORDER = [
@@ -75,8 +76,11 @@ export default function DashboardLayout() {
 
                 <div className="p-4 border-t border-slate-800">
                     <button
-                        onClick={() => navigate('/')}
-                        className="flex items-center gap-3 px-4 py-3 w-full text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-lg transition-colors cursor-pointer"
+                        onClick={() => {
+                            useAuthStore.getState().logout();
+                            navigate('/');
+                        }}
+                        className="flex items-center gap-3 px-4 py-3 w-full text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all cursor-pointer"
                     >
                         <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center shrink-0">
                             <X className="w-4 h-4" />

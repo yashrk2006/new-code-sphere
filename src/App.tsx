@@ -1,11 +1,9 @@
-import Navbar from './components/Navbar';
-import Hero from './components/Hero';
-import Features from './components/Features';
-import MonitoringNodeDemo from './components/MonitoringNodeDemo';
-import Footer from './components/Footer';
+import React from 'react';
+import LandingPage from './pages/LandingPage';
+import Login from './pages/Login'; // You will need a basic login form here
 import DashboardLayout from './pages/Dashboard';
 import DashboardOverview from './modules/Dashboard/DashboardOverview';
-import CameraGrid from './modules/Cameras/CameraGrid';
+import LiveCameras from './modules/Cameras/LiveCameras';
 import ZoneMap from './modules/Map/ZoneMap';
 import AlertDashboard from './modules/Alerts/AlertDashboard';
 import AnalyticsDashboard from './modules/Analytics/AnalyticsDashboard';
@@ -13,26 +11,19 @@ import EdgeDashboard from './modules/EdgeNodes/EdgeDashboard';
 import SecurityDashboard from './modules/Security/SecurityDashboard';
 import StorageDashboard from './modules/Storage/StorageDashboard';
 import SettingsDashboard from './modules/Settings/SettingsDashboard';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useSocket } from './hooks/useSocket';
-import { setupAxiosInterceptors } from './store/useAuthStore';
+import { setupAxiosInterceptors, useAuthStore } from './store/useAuthStore';
 
 // Initialize JWT injection into every Axios request
 setupAxiosInterceptors();
 
-function LandingPage() {
-  return (
-    <div className="bg-slate-950 min-h-screen font-sans text-slate-50 selection:bg-neon-blue/30 selection:text-neon-blue">
-      <Navbar />
-      <main>
-        <Hero />
-        <Features />
-        <MonitoringNodeDemo />
-      </main>
-      <Footer />
-    </div>
-  );
-}
+// A protective wrapper that kicks out unauthenticated users
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { token } = useAuthStore();
+  if (!token) return <Navigate to="/login" replace />;
+  return children;
+};
 
 export default function App() {
   useSocket(); // Initialize real-time WebSocket connection to Node.js backend
@@ -40,10 +31,21 @@ export default function App() {
   return (
     <Router>
       <Routes>
+        {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
-        <Route path="/dashboard" element={<DashboardLayout />}>
+        <Route path="/login" element={<Login />} />
+
+        {/* Secure Dashboard Route */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<DashboardOverview />} />
-          <Route path="cameras" element={<CameraGrid />} />
+          <Route path="cameras" element={<LiveCameras />} />
           <Route path="map" element={<ZoneMap />} />
           <Route path="alerts" element={<AlertDashboard />} />
           <Route path="analytics" element={<AnalyticsDashboard />} />
@@ -52,8 +54,10 @@ export default function App() {
           <Route path="storage" element={<StorageDashboard />} />
           <Route path="settings" element={<SettingsDashboard />} />
         </Route>
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );
 }
-
