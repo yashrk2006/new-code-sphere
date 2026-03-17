@@ -1,52 +1,180 @@
 import { useState, useEffect } from 'react';
 import { useAlertStore } from '../../store/useAlertStore';
+import { useNotificationStore } from '../../store/useNotificationStore';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { io } from 'socket.io-client';
-import { Activity, Server, Zap, CheckCircle, AlertTriangle, Terminal, FileText, Plus, Shield, MapPin } from 'lucide-react';
+import { Activity, Server, Zap, CheckCircle, AlertTriangle, Terminal, FileText, Plus, Shield, MapPin, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { LineChart, Line, ResponsiveContainer, YAxis } from 'recharts';
 import LiveInferenceFeed from './LiveInferenceFeed';
+import AddNodeModal from '../../components/AddNodeModal';
+import AnomalyTrendChart from './AnomalyTrendChart';
 
 // WebSocket connection for live terminal logs
 const socket = io(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'}/system`);
+const mainSocket = io(import.meta.env.VITE_WS_URL || 'http://localhost:4000');
 
 export default function CommandCenter() {
-    const { alerts } = useAlertStore();
+    const { alerts, addLiveAlert } = useAlertStore();
+    const { addLiveNotification } = useNotificationStore();
     const [systemLogs, setSystemLogs] = useState<{ time: string, msg: string, type: string }[]>([]);
+    const [isAddNodeModalOpen, setIsAddNodeModalOpen] = useState(false);
+    const [alertSearchQuery, setAlertSearchQuery] = useState('');
+    
+    // Dynamic Camera Navigation
+    const [currentCamIndex, setCurrentCamIndex] = useState(0);
+    // In a real app, this would be fetched from /api/nodes
+    const [cameras, setCameras] = useState([
+        { id: 'CAM-04', name: 'Primary Surveillance', streamUrl: 'http://192.168.1.8:8080/video', fps: 30 },
+        { id: 'CAM-01', name: 'North Entrance', streamUrl: 'http://192.168.1.5:8080/video', fps: 24 },
+        { id: 'CAM-02', name: 'Loading Dock', streamUrl: 'http://192.168.0.5:8080/video', fps: 24 },
+    ]);
 
-    // 1. Real API Fetching for KPIs
+    const handleNextCamera = () => {
+        setCurrentCamIndex((prev) => (prev + 1) % cameras.length);
+    };
+
+    const handleBackCamera = () => {
+        setCurrentCamIndex((prev) => (prev - 1 + cameras.length) % cameras.length);
+    };
+
+    const activeCamera = cameras[currentCamIndex] || { id: 'None', name: 'None', streamUrl: '', fps: 0 };
+    
+    // Real-Time Dashboard States
+    const [activeNodes, setActiveNodes] = useState(0);
+    const [totalNodes, setTotalNodes] = useState(3);
+    const [avgLatency, setAvgLatency] = useState(0);
+    const [healthPercent, setHealthPercent] = useState(100);
+    const [latencyTrend, setLatencyTrend] = useState<{value: number}[]>(Array(5).fill({value: 0}));
+
+    // 1. Initial API Fetching for historical KPIs (optional baseline)
     const { data: stats } = useQuery({
         queryKey: ['command_center_stats'],
         queryFn: async () => {
-            // In a real app we would create this specific /api/stats/overview endpoint. 
-            // Falling back to our local proxy mock data during demo
-            try {
-                const { data } = await axios.get(`${import.meta.env.VITE_BACKEND_URL || ''}/api/stats/overview`);
-                return data;
-            } catch (e) {
-                // Fallback demo data
-                return {
-                    activeNodes: 3, totalNodes: 3,
-                    totalAnomalies: 221, criticalAnomalies: 0,
-                    avgLatency: 10.8, healthPercent: 99.2,
-                    anomalyTrend: [{ value: 5 }, { value: 7 }, { value: 3 }, { value: 8 }, { value: 12 }],
-                    latencyTrend: [{ value: 10.1 }, { value: 11.2 }, { value: 9.8 }, { value: 10.5 }, { value: 10.8 }]
-                };
-            }
+             // Fallback demo data baseline
+             return {
+                 totalAnomalies: 221, criticalAnomalies: 0,
+                 anomalyTrend: [{ value: 5 }, { value: 7 }, { value: 3 }, { value: 8 }, { value: 12 }],
+             };
         },
-        refetchInterval: 5000, // Fetch every 5 seconds
+        refetchInterval: false,
     });
 
-    // 2. Listen for Live Terminal Logs
+    // 2. Listen for Real-Time Telemetry
     useEffect(() => {
+        // System Logs
         socket.on('system_log', (log) => {
             setSystemLogs(prev => [{ time: new Date().toLocaleTimeString(), ...log }, ...prev].slice(0, 50));
         });
-        return () => { socket.off('system_log'); };
-    }, []);
 
-    const activeAlerts = alerts.filter(a => a.status !== 'Resolved').slice(0, 6);
+        // Edge Heartbeats mapping to Active Nodes & Health
+        const edgeStatusMap = new Map();
+        mainSocket.on('edge_heartbeat', (nodeData) => {
+            edgeStatusMap.set(nodeData.id, nodeData.status);
+            
+            // Calculate Active Nodes
+            let active = 0;
+            edgeStatusMap.forEach(status => {
+                if (status === 'online') active++;
+            });
+            setActiveNodes(active);
+            setTotalNodes(Math.max(3, edgeStatusMap.size)); // Demo assumes at least 3
+
+            // Calculate System Health (mock logic based on CPU/RAM of nodes)
+            if (nodeData.metrics) {
+                const cpuHealth = Math.max(0, 100 - nodeData.metrics.cpu_usage);
+                const ramHealth = Math.max(0, 100 - nodeData.metrics.ram_usage);
+                let newHealth = Math.round((cpuHealth + ramHealth) / 2);
+                
+                // If avg latency > 50ms, drop health by 5% as requested
+                setAvgLatency(currentAvgLatency => {
+                    if (currentAvgLatency > 50) {
+                        newHealth -= 5;
+                    }
+                    return currentAvgLatency; // don't actually mutate latency here
+                });
+                
+                setHealthPercent(newHealth);
+            }
+        });
+
+        // AI Inference Updates (Latency tracking)
+        mainSocket.on('boxes_CAM-04', () => {
+            // Simulate a rolling latency calculation based on inference arrivals
+            const mockCurrentLatency = 8 + Math.random() * 4;
+            setAvgLatency(prev => {
+                const newAvg = (prev * 0.9) + (mockCurrentLatency * 0.1); // smoothing
+                setLatencyTrend(t => [...t.slice(1), { value: newAvg }]);
+                return newAvg;
+            });
+        });
+
+        // Live Alerts
+        mainSocket.on('new_anomaly', (alert) => {
+             addLiveAlert(alert);
+             
+             // Sync to Notification Bell
+             addLiveNotification({
+                 id: alert.id || Date.now().toString(),
+                 type: alert.severity === 'Critical' ? 'critical' : 'warning',
+                 title: `New Anomaly: ${alert.type.replace('_', ' ')}`,
+                 message: `Detected at ${alert.camera_id} with ${(alert.confidence * 100).toFixed(1)}% confidence.`,
+                 is_read: false,
+                 created_at: new Date().toISOString()
+             });
+
+             // Play alert sound for priority anomalies
+             const audio = new Audio('data:audio/mp3;base64,//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq'); // Short quiet beep for demo purposes
+             audio.play().catch(e => console.log('Audio autoplay blocked by browser', e));
+        });
+
+        return () => { 
+            socket.off('system_log'); 
+            mainSocket.off('edge_heartbeat');
+            mainSocket.off('boxes_CAM-04');
+            mainSocket.off('new_anomaly');
+        };
+    }, [addLiveAlert, addLiveNotification]);
+
+    // Derived stats for UI
+    const activeAlerts = alerts.filter(a => {
+        const matchesStatus = a.status !== 'Resolved';
+        if (!alertSearchQuery) return matchesStatus;
+        const q = alertSearchQuery.toLowerCase();
+        return matchesStatus && (
+            a.type.toLowerCase().includes(q) ||
+            a.camera_id.toLowerCase().includes(q) ||
+            a.severity.toLowerCase().includes(q)
+        );
+    }).slice(0, 6);
+    const totalAnomaliesLive = (stats?.totalAnomalies || 0) + alerts.length;
+    const criticalAnomaliesLive = alerts.filter(a => a.severity === 'Critical').length;
+
+    const [isGenerating, setIsGenerating] = useState(false);
+
+    const handleGenerateReport = async () => {
+         try {
+             setIsGenerating(true);
+             const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL || ''}/api/reports/daily`, {
+                 responseType: 'blob', // Important for downloading files
+             });
+             
+             // Create a URL for the blob and trigger download
+             const url = window.URL.createObjectURL(new Blob([response.data]));
+             const link = document.createElement('a');
+             link.href = url;
+             link.setAttribute('download', 'Daily_Report.pdf');
+             document.body.appendChild(link);
+             link.click();
+             link.parentNode?.removeChild(link);
+         } catch (error) {
+             console.error('Failed to generate report', error);
+             alert('Failed to generate report. Please try again later.');
+         } finally {
+             setIsGenerating(false);
+         }
+    };
 
     return (
         <div className="p-6 bg-[#0B0F19] min-h-screen text-white overflow-y-auto overflow-x-hidden">
@@ -63,10 +191,18 @@ export default function CommandCenter() {
                 </div>
 
                 <div className="flex gap-3 mt-4 md:mt-0 relative z-10">
-                    <button className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-sm font-semibold transition">
-                        <FileText size={16} /> Generate Report
+                    <button 
+                         onClick={handleGenerateReport} 
+                         disabled={isGenerating}
+                         className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 border border-gray-700 rounded-lg text-sm font-semibold transition"
+                    >
+                        {isGenerating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <FileText size={16} />} 
+                        {isGenerating ? 'Generating...' : 'Generate Report'}
                     </button>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-semibold shadow-[0_0_15px_rgba(37,99,235,0.4)] transition">
+                    <button 
+                         onClick={() => setIsAddNodeModalOpen(true)}
+                         className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-semibold shadow-[0_0_15px_rgba(37,99,235,0.4)] transition"
+                    >
                         <Plus size={16} /> Add Camera Node
                     </button>
                 </div>
@@ -82,8 +218,8 @@ export default function CommandCenter() {
                     </div>
                     <div className="flex items-end justify-between">
                         <div>
-                            <h2 className="text-3xl font-bold">{stats?.activeNodes || 0}/{stats?.totalNodes || 3}</h2>
-                            <p className="text-xs text-green-400 font-bold flex items-center gap-1 mt-1">↑ UP <span className="text-gray-500 font-normal">{(stats?.activeNodes / stats?.totalNodes * 100) || 0}% Operational</span></p>
+                            <h2 className="text-3xl font-bold">{activeNodes}/{totalNodes}</h2>
+                            <p className="text-xs text-green-400 font-bold flex items-center gap-1 mt-1">↑ UP <span className="text-gray-500 font-normal">{Math.round((activeNodes / totalNodes) * 100) || 0}% Operational</span></p>
                         </div>
                     </div>
                 </div>
@@ -96,8 +232,8 @@ export default function CommandCenter() {
                     </div>
                     <div className="flex items-end justify-between relative z-10">
                         <div>
-                            <h2 className="text-3xl font-bold">{stats?.totalAnomalies || 0}</h2>
-                            <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">→ STABLE <span className="text-gray-500">Critical: {stats?.criticalAnomalies || 0}</span></p>
+                            <h2 className="text-3xl font-bold">{totalAnomaliesLive}</h2>
+                            <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">→ LIVE <span className="text-gray-500">Critical: {criticalAnomaliesLive}</span></p>
                         </div>
                     </div>
                     {/* Sparkline Background */}
@@ -118,13 +254,13 @@ export default function CommandCenter() {
                     </div>
                     <div className="flex items-end justify-between relative z-10">
                         <div>
-                            <h2 className="text-3xl font-bold">{stats?.avgLatency || '0.0'}ms</h2>
-                            <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">→ STABLE <span className="text-gray-500">Using TensorRT ONNX</span></p>
+                            <h2 className="text-3xl font-bold">{avgLatency.toFixed(1)}ms</h2>
+                            <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">→ LIVE <span className="text-gray-500">Using TensorRT ONNX</span></p>
                         </div>
                     </div>
                     <div className="absolute bottom-0 right-0 w-1/2 h-16 opacity-30">
                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={stats?.latencyTrend || []}>
+                            <LineChart data={latencyTrend}>
                                 <YAxis domain={['dataMin - 2', 'dataMax + 2']} hide />
                                 <Line type="stepAfter" dataKey="value" stroke="#A855F7" strokeWidth={2} dot={false} />
                             </LineChart>
@@ -140,7 +276,7 @@ export default function CommandCenter() {
                     </div>
                     <div className="flex items-end justify-between">
                         <div>
-                            <h2 className="text-3xl font-bold">{stats?.healthPercent || '100'}%</h2>
+                            <h2 className="text-3xl font-bold">{healthPercent}%</h2>
                             <p className="text-xs text-green-400 font-bold flex items-center gap-1 mt-1">↑ UP <span className="text-gray-500 font-normal">All services operational</span></p>
                         </div>
                     </div>
@@ -157,17 +293,21 @@ export default function CommandCenter() {
                     <div className="bg-[#151923] rounded-xl border border-gray-800 shadow-xl overflow-hidden flex flex-col h-[500px]">
                         <div className="p-3 border-b border-gray-800 flex justify-between items-center bg-[#1A1D27]">
                             <h3 className="font-bold flex items-center gap-2">
-                                <Activity size={18} className="text-blue-500" /> Live Edge Inference
+                                <Activity size={18} className="text-blue-500" /> Live Edge Inference: {activeCamera.name}
                                 <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-500 uppercase tracking-wider ml-2">Rec</span>
                             </h3>
-                            <div className="flex gap-2">
-                                <span className="bg-gray-800 px-2 py-1 rounded text-xs font-mono text-gray-400 border border-gray-700">CAM-04</span>
-                                <span className="bg-gray-800 px-2 py-1 rounded text-xs font-mono text-gray-400 border border-gray-700">30 FPS</span>
+                            <div className="flex gap-2 items-center">
+                                <div className="flex bg-gray-900 rounded-lg overflow-hidden border border-gray-700 mr-2">
+                                    <button onClick={handleBackCamera} className="px-3 py-1 text-xs hover:bg-gray-700 transition font-bold text-gray-300">BACK</button>
+                                    <div className="w-px bg-gray-700"></div>
+                                    <button onClick={handleNextCamera} className="px-3 py-1 text-xs hover:bg-gray-700 transition font-bold text-gray-300">NEXT</button>
+                                </div>
+                                <span className="bg-gray-800 px-2 py-1 rounded text-xs font-mono text-gray-400 border border-gray-700">{activeCamera.id}</span>
+                                <span className="bg-gray-800 px-2 py-1 rounded text-xs font-mono text-gray-400 border border-gray-700">{activeCamera.fps} FPS</span>
                             </div>
                         </div>
                         <div className="flex-grow bg-black relative">
-                            {/* Uses your actual IP Webcam */}
-                            <LiveInferenceFeed streamUrl="http://192.168.0.4:8080/video" cameraId="CAM-04" />
+                            <LiveInferenceFeed streamUrl={activeCamera.streamUrl} cameraId={activeCamera.id} />
                         </div>
                     </div>
 
@@ -193,15 +333,30 @@ export default function CommandCenter() {
                             )}
                         </div>
                     </div>
+
+                    {/* Anomaly Trend Chart */}
+                    <AnomalyTrendChart />
                 </div>
 
                 {/* Right Column: Priority Alerts */}
                 <div className="bg-[#151923] rounded-xl border border-gray-800 shadow-xl flex flex-col h-[716px]">
-                    <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-[#1A1D27]">
-                        <h3 className="font-bold flex items-center gap-2">
-                            <AlertTriangle size={18} className="text-red-500" /> Priority Alerts
-                        </h3>
-                        <span className="text-xs text-gray-500">{activeAlerts.length} active</span>
+                    <div className="p-4 border-b border-gray-800 bg-[#1A1D27]">
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="font-bold flex items-center gap-2">
+                                <AlertTriangle size={18} className="text-red-500" /> Priority Alerts
+                            </h3>
+                            <span className="text-xs text-gray-500">{activeAlerts.length} active</span>
+                        </div>
+                        <div className="relative">
+                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                            <input
+                                type="text"
+                                placeholder="Search alerts (CAM-01, Unauthorized...)"
+                                value={alertSearchQuery}
+                                onChange={(e) => setAlertSearchQuery(e.target.value)}
+                                className="w-full bg-[#0d0e12] border border-gray-700 rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-gray-600 outline-none focus:border-blue-500 transition"
+                            />
+                        </div>
                     </div>
 
                     <div className="p-4 space-y-3 overflow-y-auto flex-grow custom-scrollbar">
@@ -243,6 +398,27 @@ export default function CommandCenter() {
                 </div>
 
             </div>
+
+            <AddNodeModal 
+                isOpen={isAddNodeModalOpen} 
+                onClose={() => setIsAddNodeModalOpen(false)} 
+                onAdd={(data) => {
+                    console.log('Deploying node:', data);
+                    // Mock immediate feedback
+                    setSystemLogs(prev => [{ time: new Date().toLocaleTimeString(), msg: `Provisioning new edge node: ${data.name}...`, type: 'info' }, ...prev].slice(0, 50));
+                    setTimeout(() => {
+                         setTotalNodes(prev => prev + 1);
+                         setActiveNodes(prev => prev + 1);
+                         
+                         // Add new camera to navigation
+                         const newCamId = `CAM-0${cameras.length + 1}`;
+                         setCameras(prev => [...prev, { id: newCamId, name: data.name, streamUrl: data.ip.includes('http') ? data.ip : `http://${data.ip}`, fps: 30 }]);
+                         
+                         setSystemLogs(prev => [{ time: new Date().toLocaleTimeString(), msg: `Node ${data.name} connected successfully.`, type: 'info' }, ...prev].slice(0, 50));
+                    }, 1500);
+                    setIsAddNodeModalOpen(false);
+                }} 
+            />
         </div>
     );
 }

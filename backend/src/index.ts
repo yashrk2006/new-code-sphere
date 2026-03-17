@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { EventEmitter } from 'events';
 import { PrismaClient } from '@prisma/client';
 import authRoutes from './routes/authRoutes';
 import alertRoutes from './routes/alertRoutes';
@@ -13,9 +14,13 @@ import storageRoutes from './routes/storageRoutes';
 import settingsRoutes from './routes/settingsRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import statsRoutes from './routes/statsRoutes';
+import reportRoutes from './routes/reportRoutes';
 import { addNotification, AppNotification as SystemNotification } from './controllers/notificationController';
 import { alertStore, AnomalyAlert } from './controllers/alertController';
 import { edgeNodes } from './controllers/edgeController';
+
+// Event bus for bridging REST → WebSocket broadcasts
+export const eventBus = new EventEmitter();
 
 dotenv.config();
 
@@ -43,6 +48,7 @@ app.use('/api/storage', storageRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Basic healthcheck
 app.get('/health', async (req, res) => {
@@ -58,6 +64,12 @@ app.get('/health', async (req, res) => {
 // Socket.IO Connection
 io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
+
+    // Bridge: when a Python Edge Node POSTs an anomaly via REST, broadcast it to all WS clients
+    const onBroadcastAnomaly = (anomaly: AnomalyAlert) => {
+        io.emit('new_anomaly', anomaly);
+    };
+    eventBus.on('broadcast_anomaly', onBroadcastAnomaly);
 
     // Fallback initial cameras if DB is empty for demo
     const initialCameras = [
@@ -182,6 +194,7 @@ io.on('connection', (socket) => {
         clearInterval(edgeHeartbeatInterval);
         clearInterval(systemAlertInterval);
         clearInterval(boxInterval);
+        eventBus.off('broadcast_anomaly', onBroadcastAnomaly);
     });
 });
 

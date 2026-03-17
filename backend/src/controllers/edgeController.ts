@@ -88,3 +88,38 @@ export const sendEdgeCommand = (req: Request, res: Response): void => {
 
     res.json({ success: true, node_id: id, action, new_status: node.status });
 };
+
+/** POST /api/edge/heartbeat — receive heartbeat from python Edge Node */
+export const updateHeartbeat = (req: Request, res: Response): void => {
+    const { node } = req.body;
+    
+    if (!node) {
+         res.status(400).json({ error: 'Node ID required' });
+         return;
+    }
+
+    let edgeNode = edgeNodes.get(node);
+    
+    if (!edgeNode) {
+        // Auto-register new nodes
+        edgeNode = {
+            id: node,
+            mac_address: `VTX-AUTO-${Math.floor(Math.random() * 9999)}`,
+            name: `${node} (Auto-Registered)`,
+            status: 'online',
+            model_version: '1.0.0',
+            last_heartbeat: new Date().toISOString(),
+            metrics: { cpu_usage: 45, ram_usage: 62, temperature: 58, uptime: 10 },
+        };
+        edgeNodes.set(node, edgeNode);
+    } else {
+        // Update existing node
+        edgeNode.status = 'online';
+        edgeNode.last_heartbeat = new Date().toISOString();
+        // Simulate minor metric shift to prove it's live
+        edgeNode.metrics.cpu_usage = Math.max(10, Math.min(95, edgeNode.metrics.cpu_usage + (Math.random() * 10 - 5)));
+        edgeNodes.set(node, edgeNode);
+    }
+    
+    res.json({ success: true, node: edgeNode });
+};

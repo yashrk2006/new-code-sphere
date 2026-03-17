@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { alertStore } from './alertController';
 
 /**
  * GET /api/stats/overview
@@ -18,4 +19,36 @@ export const getOverviewStats = (_req: Request, res: Response): void => {
         totalStorageGB: 100,
         alertsResolvedToday: Math.floor(80 + Math.random() * 30),
     });
+};
+
+/**
+ * GET /api/stats/anomaly-trends
+ * Returns hourly anomaly counts for the last 24 hours.
+ * Groups in-memory alerts by hour for the Recharts trend line.
+ */
+export const getAnomalyTrends = (_req: Request, res: Response): void => {
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const alerts = Array.from(alertStore.values())
+        .filter(a => new Date(a.timestamp) >= yesterday);
+
+    // Group by hour
+    const hourMap = new Map<number, number>();
+    // Pre-fill all 24 hours so the chart has no gaps
+    for (let h = 0; h < 24; h++) {
+        hourMap.set(h, 0);
+    }
+
+    alerts.forEach(alert => {
+        const hour = new Date(alert.timestamp).getHours();
+        hourMap.set(hour, (hourMap.get(hour) || 0) + 1);
+    });
+
+    const data = Array.from(hourMap.entries())
+        .sort((a, b) => a[0] - b[0])
+        .map(([hour, count]) => ({
+            hour: `${hour.toString().padStart(2, '0')}:00`,
+            alerts: count,
+        }));
+
+    res.json(data);
 };

@@ -45,3 +45,38 @@ export const updateAlert = (req: Request, res: Response): void => {
     console.log(`[Alert Updated] ${id} → ${status}`);
     res.json(alert);
 };
+
+/** POST /api/alerts — receive a new anomaly from Edge Node */
+export const createAlert = (req: Request, res: Response): void => {
+    const { type, location, confidence, timestamp } = req.body;
+    
+    // Convert logic from python payload
+    const confDec = confidence ? confidence / 100 : 0.85;
+
+    const anomaly: AnomalyAlert = {
+        id: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        camera_id: location || 'CAM-04',
+        type: (type || 'UNKNOWN').replace('-', '_').toUpperCase() as any,
+        severity: confDec > 0.85 ? 'Critical' : confDec > 0.6 ? 'Medium' : 'Low',
+        confidence: confDec,
+        image_url: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800',
+        status: 'Pending',
+        timestamp: timestamp ? new Date(timestamp * 1000).toISOString() : new Date().toISOString()
+    };
+    
+    alertStore.set(anomaly.id, anomaly);
+    if (alertStore.size > 500) {
+        const oldestKey = alertStore.keys().next().value;
+        if (oldestKey) alertStore.delete(oldestKey);
+    }
+    
+    console.log(`[Edge Anomaly REST] ${anomaly.type} at ${anomaly.camera_id}`);
+    
+    // Trigger socket broadcast globally
+    try {
+        const { eventBus } = require('../index');
+        eventBus.emit('broadcast_anomaly', anomaly);
+    } catch (e) {}
+
+    res.status(201).json(anomaly);
+};

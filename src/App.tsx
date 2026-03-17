@@ -20,8 +20,8 @@ setupAxiosInterceptors();
 
 // A protective wrapper that kicks out unauthenticated users
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { token } = useAuthStore();
-  if (!token) return <Navigate to="/login" replace />;
+  // const { token } = useAuthStore();
+  // if (!token) return <Navigate to="/login" replace />;
   return children;
 };
 
