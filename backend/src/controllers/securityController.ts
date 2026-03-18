@@ -1,128 +1,133 @@
 import { Request, Response } from 'express';
-
-// ─── Types ──────────────────────────────────────────────────
-
-export type Role = 'Admin' | 'Operator' | 'Viewer';
-
-export interface SystemUser {
-    id: string;
-    email: string;
-    role: Role;
-    created_at: string;
-}
-
-export interface AuditLogEntry {
-    id: string;
-    action: string;
-    actor_email: string;
-    ip_address: string;
-    timestamp: string;
-}
-
-export interface EdgeToken {
-    id: string;
-    name: string;
-    token_prefix: string;
-    scopes: string[];
-    created_at: string;
-    last_used: string | null;
-    status: 'active' | 'revoked';
-}
-
-// ─── In-Memory Stores ───────────────────────────────────────
-
-export const usersStore = new Map<string, SystemUser>([
-    ['usr_001', { id: 'usr_001', email: 'admin@visionaiot.dev', role: 'Admin', created_at: new Date(Date.now() - 90 * 86400000).toISOString() }],
-    ['usr_002', { id: 'usr_002', email: 'operator@visionaiot.dev', role: 'Operator', created_at: new Date(Date.now() - 30 * 86400000).toISOString() }],
-    ['usr_003', { id: 'usr_003', email: 'viewer@campus.edu', role: 'Viewer', created_at: new Date(Date.now() - 7 * 86400000).toISOString() }],
-    ['usr_004', { id: 'usr_004', email: 'patrol.lead@security.org', role: 'Operator', created_at: new Date(Date.now() - 14 * 86400000).toISOString() }],
-]);
-
-export const auditLogs: AuditLogEntry[] = [
-    { id: 'log_001', action: 'User Login (Success)', actor_email: 'admin@visionaiot.dev', ip_address: '192.168.1.10', timestamp: new Date(Date.now() - 300000).toISOString() },
-    { id: 'log_002', action: 'Alert Status Updated → Resolved', actor_email: 'operator@visionaiot.dev', ip_address: '192.168.1.25', timestamp: new Date(Date.now() - 600000).toISOString() },
-    { id: 'log_003', action: 'Edge Node Restart (edge-jetson-01)', actor_email: 'admin@visionaiot.dev', ip_address: '192.168.1.10', timestamp: new Date(Date.now() - 900000).toISOString() },
-    { id: 'log_004', action: 'Model Update Pushed (v8.1.2 → v8.1.3)', actor_email: 'admin@visionaiot.dev', ip_address: '10.0.0.5', timestamp: new Date(Date.now() - 1800000).toISOString() },
-    { id: 'log_005', action: 'User Login (Failed — wrong password)', actor_email: 'viewer@campus.edu', ip_address: '203.112.45.89', timestamp: new Date(Date.now() - 3600000).toISOString() },
-    { id: 'log_006', action: 'New User Registered', actor_email: 'patrol.lead@security.org', ip_address: '192.168.1.35', timestamp: new Date(Date.now() - 7200000).toISOString() },
-    { id: 'log_007', action: 'API Token Generated: jetson-fleet-key', actor_email: 'admin@visionaiot.dev', ip_address: '192.168.1.10', timestamp: new Date(Date.now() - 14400000).toISOString() },
-    { id: 'log_008', action: 'Camera CAM-03 Status → Offline', actor_email: 'system', ip_address: '127.0.0.1', timestamp: new Date(Date.now() - 21600000).toISOString() },
-];
-
-export const edgeTokens = new Map<string, EdgeToken>([
-    ['tok_001', { id: 'tok_001', name: 'jetson-fleet-key', token_prefix: 'viot_sk_3xF9...', scopes: ['inference:push', 'heartbeat:send'], created_at: new Date(Date.now() - 60 * 86400000).toISOString(), last_used: new Date(Date.now() - 10000).toISOString(), status: 'active' }],
-    ['tok_002', { id: 'tok_002', name: 'campus-relay-key', token_prefix: 'viot_sk_8kM2...', scopes: ['inference:push'], created_at: new Date(Date.now() - 30 * 86400000).toISOString(), last_used: new Date(Date.now() - 86400000).toISOString(), status: 'active' }],
-    ['tok_003', { id: 'tok_003', name: 'deprecated-v1-key', token_prefix: 'viot_sk_1aB0...', scopes: ['inference:push'], created_at: new Date(Date.now() - 180 * 86400000).toISOString(), last_used: null, status: 'revoked' }],
-]);
+import { UserModel, AuditLogModel, TokenModel } from '../models';
 
 // ─── Handlers ───────────────────────────────────────────────
 
 /** GET /api/security/users */
-export const getUsers = (_req: Request, res: Response): void => {
-    res.json(Array.from(usersStore.values()));
+export const getUsers = async (_req: Request, res: Response): Promise<void> => {
+    try {
+        const users = await UserModel.find().sort({ created_at: -1 });
+        // Map _id to id for frontend compatibility
+        res.json(users.map(u => ({ ...u.toObject(), id: u._id })));
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to fetch users' });
+    }
+};
+
+/** POST /api/security/users/invite */
+export const inviteUser = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { email, role } = req.body;
+        const newUser = new UserModel({ email, role });
+        await newUser.save();
+
+        const log = new AuditLogModel({
+            action: `New User Invited (${email})`,
+            actor_email: 'admin@visionaiot.dev',
+            ip_address: req.ip || '0.0.0.0',
+        });
+        await log.save();
+
+        res.status(201).json({ ...newUser.toObject(), id: newUser._id });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to invite user" });
+    }
 };
 
 /** DELETE /api/security/users/:id */
-export const deleteUser = (req: Request, res: Response): void => {
-    const id = req.params.id as string;
-    if (!usersStore.has(id)) { res.status(404).json({ error: 'User not found' }); return; }
-    usersStore.delete(id);
-    auditLogs.unshift({
-        id: `log_${Date.now()}`,
-        action: `User Account Revoked (${id})`,
-        actor_email: 'admin@visionaiot.dev',
-        ip_address: req.ip || '0.0.0.0',
-        timestamp: new Date().toISOString(),
-    });
-    res.json({ success: true });
+export const deleteUser = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const id = req.params.id as string;
+        const result = await UserModel.findByIdAndDelete(id);
+        
+        if (!result) { res.status(404).json({ error: 'User not found' }); return; }
+        
+        const log = new AuditLogModel({
+            action: `User Account Revoked (${result.email})`,
+            actor_email: 'admin@visionaiot.dev',
+            ip_address: req.ip || '0.0.0.0',
+        });
+        await log.save();
+
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to delete user' });
+    }
 };
 
 /** GET /api/security/logs */
-export const getLogs = (_req: Request, res: Response): void => {
-    res.json(auditLogs.slice(0, 50));
+export const getLogs = async (_req: Request, res: Response): Promise<void> => {
+    try {
+        const logs = await AuditLogModel.find().sort({ timestamp: -1 }).limit(50);
+        res.json(logs.map(l => ({ ...l.toObject(), id: l._id })));
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to fetch logs' });
+    }
 };
 
 /** GET /api/security/tokens */
-export const getTokens = (_req: Request, res: Response): void => {
-    res.json(Array.from(edgeTokens.values()));
+export const getTokens = async (_req: Request, res: Response): Promise<void> => {
+    try {
+        const tokens = await TokenModel.find().sort({ created_at: -1 });
+        res.json(tokens.map(t => ({ ...t.toObject(), id: t._id })));
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to fetch tokens' });
+    }
 };
 
 /** POST /api/security/tokens — Generate new token */
-export const createToken = (req: Request, res: Response): void => {
-    const { name, scopes } = req.body as { name: string; scopes: string[] };
-    const id = `tok_${Date.now()}`;
-    const token: EdgeToken = {
-        id,
-        name: name || `key-${id}`,
-        token_prefix: `viot_sk_${Math.random().toString(36).slice(2, 6)}...`,
-        scopes: scopes || ['inference:push'],
-        created_at: new Date().toISOString(),
-        last_used: null,
-        status: 'active',
-    };
-    edgeTokens.set(id, token);
-    auditLogs.unshift({
-        id: `log_${Date.now()}`,
-        action: `API Token Generated: ${token.name}`,
-        actor_email: 'admin@visionaiot.dev',
-        ip_address: req.ip || '0.0.0.0',
-        timestamp: new Date().toISOString(),
-    });
-    res.json(token);
+export const createToken = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { name, scopes } = req.body as { name: string; scopes: string[] };
+        
+        const jwt = require('jsonwebtoken');
+        const JWT_SECRET = process.env.JWT_SECRET || 'hackops-crew-secret-key-2026';
+        
+        // Generate a REAL JSON Web Token
+        const tokenString = jwt.sign({ edge_node: name, scopes }, JWT_SECRET, { expiresIn: '365d' });
+        const tokenPrefix = `viot_sk_${tokenString.split('.')[2].substring(0, 10)}...`;
+
+        const newToken = new TokenModel({
+            name: name || `key-${Date.now()}`,
+            token_prefix: tokenPrefix,
+            scopes: scopes || ['inference:push'],
+        });
+        await newToken.save();
+
+        const log = new AuditLogModel({
+            action: `API Token Generated: ${newToken.name}`,
+            actor_email: 'admin@visionaiot.dev',
+            ip_address: req.ip || '0.0.0.0',
+        });
+        await log.save();
+
+        // Return the full token string *only once* in the creation response
+        res.json({ ...newToken.toObject(), id: newToken._id, plain_token: tokenString });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to create token' });
+    }
 };
 
 /** DELETE /api/security/tokens/:id — Revoke token */
-export const revokeToken = (req: Request, res: Response): void => {
-    const id = req.params.id as string;
-    const token = edgeTokens.get(id);
-    if (!token) { res.status(404).json({ error: 'Token not found' }); return; }
-    token.status = 'revoked';
-    auditLogs.unshift({
-        id: `log_${Date.now()}`,
-        action: `API Token Revoked: ${token.name}`,
-        actor_email: 'admin@visionaiot.dev',
-        ip_address: req.ip || '0.0.0.0',
-        timestamp: new Date().toISOString(),
-    });
-    res.json({ success: true });
+export const revokeToken = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const id = req.params.id as string;
+        const token = await TokenModel.findById(id);
+        
+        if (!token) { res.status(404).json({ error: 'Token not found' }); return; }
+        
+        token.status = 'revoked';
+        await token.save();
+
+        const log = new AuditLogModel({
+            action: `API Token Revoked: ${token.name}`,
+            actor_email: 'admin@visionaiot.dev',
+            ip_address: req.ip || '0.0.0.0',
+        });
+        await log.save();
+
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: 'Failed to revoke token' });
+    }
 };

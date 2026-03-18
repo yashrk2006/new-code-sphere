@@ -31,6 +31,9 @@ CONFIDENCE_THRESHOLD = 0.50
 ANOMALY_LABELS = ["person", "car", "truck", "unauthorized", "missing-gear"]
 ANOMALY_CONFIDENCE = 0.75                     # Minimum to trigger an alert POST
 
+TOKEN = "PASTE_YOUR_GENERATED_TOKEN_HERE"
+HEADERS = {"Authorization": f"Bearer {TOKEN}"}
+
 # ─── Load Model ──────────────────────────────────────────────────────────────
 print(f"[Edge Node {NODE_ID}] Loading YOLOv8 Model: {MODEL_PATH}")
 model = YOLO(MODEL_PATH)
@@ -58,7 +61,7 @@ def report_anomaly(label: str, conf: float):
         "timestamp": time.time()
     }
     try:
-        resp = requests.post(ANOMALY_ENDPOINT, json=payload, timeout=5)
+        resp = requests.post(ANOMALY_ENDPOINT, json=payload, headers=HEADERS, timeout=5)
         if resp.status_code == 201:
             print(f"  [ALERT SENT] {label} → Conf: {conf:.2%}")
         else:
@@ -70,7 +73,7 @@ def report_anomaly(label: str, conf: float):
 def send_heartbeat():
     """POST a heartbeat to keep the System Health metric at 100%."""
     try:
-        requests.post(HEARTBEAT_ENDPOINT, json={"node": NODE_ID}, timeout=3)
+        requests.post(HEARTBEAT_ENDPOINT, json={"node": NODE_ID}, headers=HEADERS, timeout=3)
         print(f"  [HEARTBEAT] {NODE_ID} → OK")
     except Exception as e:
         print(f"  [HEARTBEAT FAILED] {e}")

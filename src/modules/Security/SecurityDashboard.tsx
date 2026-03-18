@@ -7,6 +7,7 @@ import {
     AlertTriangle, CheckCircle2, XCircle, RefreshCw,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import InviteUserModal from '../../components/InviteUserModal';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -74,6 +75,7 @@ export default function SecurityDashboard() {
         queryKey: ['security_logs'],
         queryFn: async () => (await axios.get(`${API_BASE}/api/security/logs`)).data,
         enabled: activeTab === 'audit',
+        refetchInterval: 5000, // Fetch every 5s for "live" system events
     });
 
     // ─── Tokens ─────────────────────────────────────────────────
@@ -83,11 +85,16 @@ export default function SecurityDashboard() {
         enabled: activeTab === 'tokens',
     });
 
+    const [newlyGeneratedToken, setNewlyGeneratedToken] = useState<string | null>(null);
+
     const createTokenMutation = useMutation({
-        mutationFn: () => axios.post(`${API_BASE}/api/security/tokens`, { name: `key-${Date.now()}`, scopes: ['inference:push', 'heartbeat:send'] }),
-        onSuccess: () => {
+        mutationFn: () => axios.post(`${API_BASE}/api/security/tokens`, { name: `CAM-Node-${Math.floor(Math.random() * 100)}`, scopes: ['inference:push', 'heartbeat:send'] }),
+        onSuccess: (response) => {
             queryClient.invalidateQueries({ queryKey: ['security_tokens'] });
             queryClient.invalidateQueries({ queryKey: ['security_logs'] });
+            if (response.data.plain_token) {
+                setNewlyGeneratedToken(response.data.plain_token);
+            }
         },
     });
 
@@ -149,6 +156,8 @@ export default function SecurityDashboard() {
                             onGenerate={() => createTokenMutation.mutate()}
                             onRevoke={(id) => revokeTokenMutation.mutate(id)}
                             isGenerating={createTokenMutation.isPending}
+                            generatedToken={newlyGeneratedToken}
+                            clearGeneratedToken={() => setNewlyGeneratedToken(null)}
                         />
                     )}
                 </motion.div>
@@ -160,6 +169,8 @@ export default function SecurityDashboard() {
 // ─── Users Panel ────────────────────────────────────────────
 
 function UsersPanel({ users, loading, onDelete }: { users?: SystemUser[]; loading: boolean; onDelete: (id: string) => void }) {
+    const [isModalOpen, setModalOpen] = useState(false);
+
     return (
         <div className="p-6">
             <div className="flex items-center justify-between mb-6">
@@ -167,7 +178,10 @@ function UsersPanel({ users, loading, onDelete }: { users?: SystemUser[]; loadin
                     <h2 className="text-sm font-bold text-white">Registered Personnel</h2>
                     <p className="text-[11px] text-slate-500 mt-0.5">{users?.length ?? 0} accounts in system</p>
                 </div>
-                <button className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 transition-colors">
+                <button 
+                    onClick={() => setModalOpen(true)}
+                    className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 transition-colors"
+                >
                     <Plus className="w-3.5 h-3.5" /> Invite User
                 </button>
             </div>
@@ -221,6 +235,7 @@ function UsersPanel({ users, loading, onDelete }: { users?: SystemUser[]; loadin
                     </table>
                 </div>
             )}
+            <InviteUserModal isOpen={isModalOpen} onClose={() => setModalOpen(false)} />
         </div>
     );
 }
@@ -295,13 +310,15 @@ function AuditPanel({ logs, loading }: { logs?: AuditLog[]; loading: boolean }) 
 // ─── Tokens Panel ───────────────────────────────────────────
 
 function TokensPanel({
-    tokens, loading, onGenerate, onRevoke, isGenerating,
+    tokens, loading, onGenerate, onRevoke, isGenerating, generatedToken, clearGeneratedToken
 }: {
     tokens?: EdgeToken[];
     loading: boolean;
     onGenerate: () => void;
     onRevoke: (id: string) => void;
     isGenerating: boolean;
+    generatedToken?: string | null;
+    clearGeneratedToken?: () => void;
 }) {
     return (
         <div className="p-6">
@@ -310,15 +327,40 @@ function TokensPanel({
                     <h2 className="text-sm font-bold text-white">Edge Device Authentication</h2>
                     <p className="text-[11px] text-slate-500 mt-0.5">API keys used by Jetson Nanos to push inference data</p>
                 </div>
-                <button
-                    onClick={onGenerate}
-                    disabled={isGenerating}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-50"
-                >
-                    {isGenerating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                    Generate Token
-                </button>
+                {!generatedToken && (
+                    <button
+                        onClick={onGenerate}
+                        disabled={isGenerating}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                    >
+                        {isGenerating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                        Generate Token
+                    </button>
+                )}
             </div>
+
+            {generatedToken && (
+                <div className="mb-6 bg-slate-900 border border-emerald-500/30 p-4 rounded-xl shadow-lg shadow-emerald-500/5">
+                    <label className="text-[10px] text-emerald-400 uppercase font-bold tracking-wider mb-2 block">
+                        Your Edge Token (Copy this to your Python script)
+                    </label>
+                    <div className="bg-black p-3 rounded-lg border border-slate-700 font-mono text-xs text-emerald-500 break-all mb-3 relative group">
+                        {generatedToken}
+                        <button 
+                            className="absolute top-2 right-2 p-1.5 bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-slate-700"
+                            onClick={() => navigator.clipboard.writeText(generatedToken)}
+                        >
+                            <Copy className="w-3.5 h-3.5 text-slate-400" />
+                        </button>
+                    </div>
+                    <button 
+                        onClick={clearGeneratedToken} 
+                        className="text-slate-500 text-xs hover:text-white transition-colors underline"
+                    >
+                        Clear view
+                    </button>
+                </div>
+            )}
 
             {loading ? (
                 <LoadingSpinner text="Loading edge tokens..." />

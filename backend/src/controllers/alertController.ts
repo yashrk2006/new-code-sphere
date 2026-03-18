@@ -1,4 +1,6 @@
 import { Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
+import { AuditLogModel } from '../models';
 
 export type AlertStatus = 'Pending' | 'Investigating' | 'Resolved' | 'False Positive';
 
@@ -47,7 +49,35 @@ export const updateAlert = (req: Request, res: Response): void => {
 };
 
 /** POST /api/alerts — receive a new anomaly from Edge Node */
-export const createAlert = (req: Request, res: Response): void => {
+export const createAlert = async (req: Request, res: Response): Promise<void> => {
+    // ─── JWT Authentication ───
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        res.status(401).json({ error: "Missing or invalid Authorization header" });
+        return;
+    }
+
+    let edgeNodeId = 'Unknown Node';
+    try {
+        const token = authHeader.split(' ')[1];
+        const secret = process.env.JWT_SECRET || 'hackops-crew-secret-key-2026';
+        const decoded = jwt.verify(token, secret) as any;
+        edgeNodeId = decoded.edge_node || req.body.location || 'CAM-04';
+
+        // Log Token Usage to Audit Trail
+        const log = new AuditLogModel({
+            action: `${edgeNodeId} authenticated via Edge Token.`,
+            actor_email: 'edge-system',
+            ip_address: req.ip || '0.0.0.0'
+        });
+        await log.save();
+    } catch (e) {
+        console.log(`[Auth Failed] Invalid Edge Token from ${req.ip}`);
+        res.status(401).json({ error: "Unauthorized Edge Node: Invalid Token" });
+        return;
+    }
+    // ──────────────────────────
+
     const { type, location, confidence, timestamp } = req.body;
     
     // Convert logic from python payload
@@ -55,7 +85,7 @@ export const createAlert = (req: Request, res: Response): void => {
 
     const anomaly: AnomalyAlert = {
         id: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-        camera_id: location || 'CAM-04',
+        camera_id: location || edgeNodeId,
         type: (type || 'UNKNOWN').replace('-', '_').toUpperCase() as any,
         severity: confDec > 0.85 ? 'Critical' : confDec > 0.6 ? 'Medium' : 'Low',
         confidence: confDec,

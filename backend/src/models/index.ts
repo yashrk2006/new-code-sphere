@@ -1,7 +1,9 @@
 import mongoose from 'mongoose';
 
 // Ensure the connection is established somewhere in your main backend startup (e.g. index.ts)
-// mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/visionaiot')
+mongoose.connect(process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/visionaiot')
+  .then(() => console.log('✅ Connected to MongoDB (Persistence Layer)'))
+  .catch(err => console.error('❌ MongoDB Connection Error:', err));
 
 // For the "Active Edge Nodes" 0/3 metric
 const nodeSchema = new mongoose.Schema({
@@ -25,3 +27,31 @@ const anomalySchema = new mongoose.Schema({
 });
 
 export const AnomalyModel = mongoose.model('Anomaly', anomalySchema);
+
+// For the "Security Dashboard"
+const userSchema = new mongoose.Schema({
+  email: { type: String, required: true },
+  role: { type: String, enum: ['Admin', 'Operator', 'Viewer'], required: true },
+  created_at: { type: Date, default: Date.now },
+  status: { type: String, default: 'Active' }
+});
+
+const auditLogSchema = new mongoose.Schema({
+  action: { type: String, required: true },
+  actor_email: { type: String, required: true },
+  ip_address: { type: String, required: true },
+  timestamp: { type: Date, default: Date.now }
+});
+
+const edgeTokenSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  token_prefix: { type: String, required: true },
+  scopes: { type: [String], default: ['inference:push'] },
+  created_at: { type: Date, default: Date.now },
+  last_used: { type: Date, default: null },
+  status: { type: String, enum: ['active', 'revoked'], default: 'active' }
+});
+
+export const UserModel = mongoose.model('User', userSchema);
+export const AuditLogModel = mongoose.model('AuditLog', auditLogSchema);
+export const TokenModel = mongoose.model('EdgeToken', edgeTokenSchema);

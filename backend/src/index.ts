@@ -18,6 +18,7 @@ import reportRoutes from './routes/reportRoutes';
 import { addNotification, AppNotification as SystemNotification } from './controllers/notificationController';
 import { alertStore, AnomalyAlert } from './controllers/alertController';
 import { edgeNodes } from './controllers/edgeController';
+import './models'; // Initialize MongoDB Connection
 
 // Event bus for bridging REST → WebSocket broadcasts
 export const eventBus = new EventEmitter();

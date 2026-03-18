@@ -11,9 +11,9 @@ import LiveInferenceFeed from './LiveInferenceFeed';
 import AddNodeModal from '../../components/AddNodeModal';
 import AnomalyTrendChart from './AnomalyTrendChart';
 
-// WebSocket connection for live terminal logs
-const socket = io(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'}/system`);
-const mainSocket = io(import.meta.env.VITE_WS_URL || 'http://localhost:4000');
+// WebSocket connection strings (instantiated inside useEffect to prevent SSR hydration mismatch)
+const SYSTEM_WS_URL = `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'}/system`;
+const MAIN_WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:4000';
 
 export default function CommandCenter() {
     const { alerts, addLiveAlert } = useAlertStore();
@@ -63,6 +63,11 @@ export default function CommandCenter() {
 
     // 2. Listen for Real-Time Telemetry
     useEffect(() => {
+        // Prevent Vercel connection errors during SSR
+        if (typeof window === 'undefined' || window.location.hostname.includes('vercel.app')) return;
+
+        const socket = io(SYSTEM_WS_URL);
+        const mainSocket = io(MAIN_WS_URL);
         // System Logs
         socket.on('system_log', (log) => {
             setSystemLogs(prev => [{ time: new Date().toLocaleTimeString(), ...log }, ...prev].slice(0, 50));
@@ -125,7 +130,7 @@ export default function CommandCenter() {
              });
 
              // Play alert sound for priority anomalies
-             const audio = new Audio('data:audio/mp3;base64,//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq'); // Short quiet beep for demo purposes
+             const audio = new Audio('/alert-chime.mp3'); 
              audio.play().catch(e => console.log('Audio autoplay blocked by browser', e));
         });
 
@@ -134,6 +139,8 @@ export default function CommandCenter() {
             mainSocket.off('edge_heartbeat');
             mainSocket.off('boxes_CAM-04');
             mainSocket.off('new_anomaly');
+            socket.disconnect();
+            mainSocket.disconnect();
         };
     }, [addLiveAlert, addLiveNotification]);
 
