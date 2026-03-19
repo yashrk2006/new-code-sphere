@@ -83,8 +83,10 @@ export default function ReportModal() {
             setIsSubmitting(false);
             setSubmitted(true);
             setTimeout(() => navigate('/citizen/dashboard'), 2500);
-        } catch {
+        } catch (error: any) {
             setIsSubmitting(false);
+            console.error('Report submission failed:', error);
+            alert(`Report submission failed: ${error.response?.data?.error || error.message || 'Unknown error'}`);
         }
     };
 
