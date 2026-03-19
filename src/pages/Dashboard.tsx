@@ -14,6 +14,7 @@ const MODULE_ORDER = [
     { path: '/dashboard', title: 'Overview' },
     { path: '/dashboard/cameras', title: 'Live Cameras' },
     { path: '/dashboard/alerts', title: 'Anomaly Alerts' },
+    { path: '/dashboard/citizen-hub', title: 'Citizen Hub' },
     { path: '/dashboard/analytics', title: 'Analytics' },
     { path: '/dashboard/map', title: 'Zone Map' },
     { path: '/dashboard/edge', title: 'Edge Nodes' },
@@ -74,6 +75,7 @@ export default function DashboardLayout() {
                     <SidebarItem icon={<LayoutDashboard />} label="Command Center" active={location.pathname === '/dashboard'} path="/dashboard" />
                     <SidebarItem icon={<Video />} label="Live Streams" active={location.pathname === '/dashboard/cameras'} badge="4" path="/dashboard/cameras" />
                     <SidebarItem icon={<AlertTriangle />} label="Incidents" active={location.pathname === '/dashboard/alerts'} badge={pendingAlertCount > 0 ? String(pendingAlertCount) : undefined} badgeColor="bg-red-500/80 shadow-lg shadow-red-500/20" path="/dashboard/alerts" />
+                    <SidebarItem icon={<Users />} label="Citizen Hub" active={location.pathname === '/dashboard/citizen-hub'} path="/dashboard/citizen-hub" />
                     <SidebarItem icon={<Activity />} label="Analytics" active={location.pathname === '/dashboard/analytics'} path="/dashboard/analytics" />
                     <SidebarItem icon={<MapPin />} label="Spatial Map" active={location.pathname === '/dashboard/map'} path="/dashboard/map" />
 

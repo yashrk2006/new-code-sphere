@@ -37,12 +37,14 @@ const createIcon = (color: string) => new L.Icon({
     popupAnchor: [1, -34],
     shadowSize: [41, 41]
 });
+
 const icons = {
     REPORTED: createIcon('red'),
     'UNDER REVIEW': createIcon('orange'),
     'TEAM DISPATCHED': createIcon('blue'),
     RESOLVED: createIcon('grey')
 };
+
 const catIcons = { Violence: Shield, Crowd: Users, Municipal: Trash2 };
 
 export default function CitizenIncidentHub() {
@@ -52,13 +54,10 @@ export default function CitizenIncidentHub() {
 
     useEffect(() => {
         const socket = io(API_BASE);
+        
         const fetchIncidents = async () => {
-            try {
-                const { data } = await axios.get(`${API_BASE}/api/citizen/incidents`);
-                setIncidents(data);
-            } catch (e) {
-                // Backend may not have citizen routes yet; show empty state
-            }
+            const { data } = await axios.get(`${API_BASE}/api/citizen/incidents`);
+            setIncidents(data);
         };
         fetchIncidents();
 

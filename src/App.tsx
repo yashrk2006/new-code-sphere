@@ -42,7 +42,6 @@ const AnimatedRoutes = () => {
           <Route index element={<CitizenLanding />} />
           <Route path="login" element={<CitizenLogin />} />
           <Route path="dashboard" element={<CitizenDashboard />} />
-          <Route path="hub" element={<CitizenIncidentHub />} />
         </Route>
 
         {/* Secure Dashboard Route (Admin) */}
@@ -58,6 +57,7 @@ const AnimatedRoutes = () => {
           <Route path="cameras" element={<LiveCameras />} />
           <Route path="map" element={<ZoneMap />} />
           <Route path="alerts" element={<AlertDashboard />} />
+          <Route path="citizen-hub" element={<CitizenIncidentHub />} />
           <Route path="analytics" element={<AnalyticsDashboard />} />
           <Route path="edge" element={<EdgeDashboard />} />
           <Route path="security" element={<SecurityDashboard />} />
