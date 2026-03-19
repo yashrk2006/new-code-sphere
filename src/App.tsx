@@ -16,7 +16,7 @@ import CitizenLogin from './citizen/CitizenLogin';
 import CitizenDashboard from './citizen/CitizenDashboard';
 import CitizenIncidentHub from './modules/CitizenHub/CitizenIncidentHub';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { useSocket } from './hooks/useSocket';
 import { setupAxiosInterceptors } from './store/useAuthStore';
 
