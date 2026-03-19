@@ -199,8 +199,8 @@ export default function CommandCenter() {
                         <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                         <span className="text-xs font-bold tracking-widest text-green-500 uppercase">Live System Status</span>
                     </div>
-                    <h1 className="text-4xl font-extrabold tracking-tight">Command Center</h1>
-                    <p className="text-gray-400 mt-1">Real-time edge inference and anomaly detection overview.</p>
+                    <h1 className="text-4xl font-extrabold tracking-tight text-glow">Command Center</h1>
+                    <p className="text-slate-400 mt-1">Real-time edge inference and anomaly detection overview.</p>
                 </div>
 
                 <div className="flex gap-3 mt-4 md:mt-0 relative z-10">
@@ -224,7 +224,7 @@ export default function CommandCenter() {
             {/* KPI Cards with Live Sparklines */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
                 {/* Active Nodes */}
-                <div className="bg-[#151923] p-5 rounded-xl border border-gray-800 flex flex-col justify-between h-32">
+                <div className="glass-card p-5 flex flex-col justify-between h-32 hover:neon-border transition-all duration-300">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-blue-500/10 rounded-lg"><Server size={18} className="text-blue-400" /></div>
                         <span className="text-sm text-gray-400 font-medium">Active Edge Nodes</span>
@@ -238,7 +238,7 @@ export default function CommandCenter() {
                 </div>
 
                 {/* Total Anomalies */}
-                <div className="bg-[#151923] p-5 rounded-xl border border-gray-800 flex flex-col justify-between h-32 relative overflow-hidden">
+                <div className="glass-card p-5 flex flex-col justify-between h-32 relative overflow-hidden hover:neon-border transition-all duration-300">
                     <div className="flex items-center gap-3 relative z-10">
                         <div className="p-2 bg-red-500/10 rounded-lg"><AlertTriangle size={18} className="text-red-400" /></div>
                         <span className="text-sm text-gray-400 font-medium">Total Anomalies (24h)</span>
@@ -260,7 +260,7 @@ export default function CommandCenter() {
                 </div>
 
                 {/* Avg Inference Time */}
-                <div className="bg-[#151923] p-5 rounded-xl border border-gray-800 flex flex-col justify-between h-32 relative overflow-hidden">
+                <div className="glass-card p-5 flex flex-col justify-between h-32 relative overflow-hidden hover:neon-border transition-all duration-300">
                     <div className="flex items-center gap-3 relative z-10">
                         <div className="p-2 bg-purple-500/10 rounded-lg"><Zap size={18} className="text-purple-400" /></div>
                         <span className="text-sm text-gray-400 font-medium">Avg Inference Time</span>
@@ -282,7 +282,7 @@ export default function CommandCenter() {
                 </div>
 
                 {/* System Health */}
-                <div className="bg-[#151923] p-5 rounded-xl border border-gray-800 flex flex-col justify-between h-32">
+                <div className="glass-card p-5 flex flex-col justify-between h-32 hover:neon-border transition-all duration-300">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-green-500/10 rounded-lg"><CheckCircle size={18} className="text-green-400" /></div>
                         <span className="text-sm text-gray-400 font-medium">System Health</span>
@@ -303,8 +303,8 @@ export default function CommandCenter() {
                 <div className="xl:col-span-2 flex flex-col gap-6">
 
                     {/* Live Edge Inference Widget */}
-                    <div className="bg-[#151923] rounded-xl border border-gray-800 shadow-xl overflow-hidden flex flex-col h-[500px]">
-                        <div className="p-3 border-b border-gray-800 flex justify-between items-center bg-[#1A1D27]">
+                    <div className="glass-card shadow-2xl overflow-hidden flex flex-col h-[500px] border-neon-blue/20">
+                        <div className="p-3 border-b border-slate-800 flex justify-between items-center bg-slate-900/60 backdrop-blur-md">
                             <h3 className="font-bold flex items-center gap-2">
                                 <Activity size={18} className="text-blue-500" /> Live Edge Inference: {activeCamera.name}
                                 <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-500 uppercase tracking-wider ml-2">Rec</span>
@@ -325,12 +325,12 @@ export default function CommandCenter() {
                     </div>
 
                     {/* NEW FEATURE: Live System Terminal */}
-                    <div className="bg-[#151923] rounded-xl border border-gray-800 shadow-xl overflow-hidden h-48 flex flex-col">
-                        <div className="p-2 px-4 border-b border-gray-800 bg-[#1A1D27] flex items-center gap-2">
-                            <Terminal size={14} className="text-gray-400" />
-                            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">System Event Log</span>
+                    <div className="glass-card shadow-xl overflow-hidden h-48 flex flex-col">
+                        <div className="p-2 px-4 border-b border-slate-800 bg-slate-900/60 flex items-center gap-2">
+                            <Terminal size={14} className="text-slate-400" />
+                            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">System Event Log</span>
                         </div>
-                        <div className="p-4 font-mono text-xs overflow-y-auto flex-grow bg-[#0B0F19]">
+                        <div className="p-4 font-mono text-xs overflow-y-auto flex-grow bg-slate-950/50">
                             {systemLogs.length === 0 ? (
                                 <span className="text-gray-600">Awaiting system telemetry...</span>
                             ) : (
@@ -352,8 +352,8 @@ export default function CommandCenter() {
                 </div>
 
                 {/* Right Column: Priority Alerts */}
-                <div className="bg-[#151923] rounded-xl border border-gray-800 shadow-xl flex flex-col h-[716px]">
-                    <div className="p-4 border-b border-gray-800 bg-[#1A1D27]">
+                <div className="glass-card shadow-xl flex flex-col h-[716px]">
+                    <div className="p-4 border-b border-slate-800 bg-slate-900/60">
                         <div className="flex justify-between items-center mb-3">
                             <h3 className="font-bold flex items-center gap-2">
                                 <AlertTriangle size={18} className="text-red-500" /> Priority Alerts

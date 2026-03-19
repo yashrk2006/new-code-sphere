@@ -36,6 +36,10 @@ from ultralytics import YOLO
 import socketio
 import google.generativeai as genai
 from PIL import Image
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # ─── Configuration ─────────────────────────────────────────────────────────────
 
@@ -89,8 +93,8 @@ print(f"[{NODE_ID}] YOLO ready. Classes sample: {list(model.names.values())[:8]}
 
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
-    gemini_model = genai.GenerativeModel("gemini-1.5-flash")
-    print(f"[{NODE_ID}] Gemini Vision ready.")
+    gemini_model = genai.GenerativeModel("gemini-2.0-flash")
+    print(f"[{NODE_ID}] Gemini Vision ready (using gemini-2.0-flash).")
 else:
     gemini_model = None
     print(f"[{NODE_ID}] ⚠ GEMINI_API_KEY not set — Gemini analysis disabled.")

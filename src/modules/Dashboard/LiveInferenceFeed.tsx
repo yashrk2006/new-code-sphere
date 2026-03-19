@@ -52,23 +52,28 @@ export default function LiveInferenceFeed({ streamUrl, cameraId }: Props) {
             {/* Live Camera Stream or Fallback */}
             <div className="w-full h-full relative">
                 {streamError ? (
-                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 border border-slate-800">
-                        <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center mb-3">
-                            <svg className="w-7 h-7 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 glass">
+                        <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(59,130,246,0.1)]">
+                            <svg className="w-7 h-7 text-blue-500/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                             </svg>
                         </div>
-                        <p className="text-sm text-slate-400 font-medium">Awaiting camera stream</p>
-                        <p className="text-[10px] text-slate-600 mt-1">Connect your IP camera at <span className="font-mono text-slate-500">{streamUrl}</span></p>
-                        <button 
-                            onClick={() => setStreamError(false)}
-                            className="mt-4 px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold rounded-lg transition"
-                        >
-                            Retry Connection
-                        </button>
-                        <div className="flex items-center gap-2 mt-3">
+                        <h4 className="text-sm text-white font-bold tracking-tight mb-1">Stream Restricted</h4>
+                        <p className="text-[11px] text-slate-400 max-w-[240px] text-center leading-relaxed">
+                            Browser security blocks <span className="text-amber-500 font-mono">http://</span> streams on <span className="text-emerald-500 font-mono">https://</span> sites.
+                        </p>
+                        <div className="mt-4 flex flex-col items-center gap-2">
+                            <button 
+                                onClick={() => setStreamError(false)}
+                                className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold rounded-full transition-all shadow-[0_0_15px_rgba(37,99,235,0.4)]"
+                            >
+                                Reconnect Stream
+                            </button>
+                            <span className="text-[9px] text-slate-600 font-mono italic">Target: {streamUrl}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-6">
                             <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                            <span className="text-[9px] text-amber-500/70 uppercase tracking-wider font-medium">Standby</span>
+                            <span className="text-[9px] text-amber-500/70 uppercase tracking-widest font-black">Local Mode Active</span>
                         </div>
                     </div>
                 ) : (
@@ -83,7 +88,7 @@ export default function LiveInferenceFeed({ streamUrl, cameraId }: Props) {
             </div>
 
             {/* Telemetry HUD (always visible) */}
-            <div className="absolute top-3 right-3 z-20 font-mono text-[9px] leading-snug bg-black/50 backdrop-blur-sm rounded-lg px-2.5 py-1.5 border border-white/5">
+            <div className="absolute top-3 right-3 z-20 font-mono text-[9px] leading-snug bg-black/60 backdrop-blur-md rounded-lg px-2.5 py-2 border border-blue-500/20 shadow-lg">
                 <p className="text-emerald-400">MODEL <span className="text-white/80 ml-1">YOLOv8m-parking</span></p>
                 <p className="text-emerald-400">LATENCY <span className="text-white/80 ml-1">{latencyMs > 0 ? `${Math.min(latencyMs, 999)}ms` : '—'}</span></p>
                 <p className="text-emerald-400">OBJECTS <span className="text-white/80 ml-1">{boxes.length}</span></p>

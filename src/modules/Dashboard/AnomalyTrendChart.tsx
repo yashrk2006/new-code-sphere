@@ -43,8 +43,8 @@ export const AnomalyTrendChart = () => {
     const peakHour = data.reduce((max, d) => d.alerts > max.alerts ? d : max, { hour: '--', alerts: 0 });
 
     return (
-        <div className="bg-[#151923] rounded-xl border border-gray-800 shadow-xl overflow-hidden mt-6">
-            <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-[#1A1D27]">
+        <div className="glass-card shadow-xl overflow-hidden mt-6">
+            <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/60 backdrop-blur-md">
                 <div className="flex items-center gap-2">
                     <TrendingUp size={16} className="text-red-400" />
                     <h3 className="font-bold text-white text-sm">Anomaly Frequency (24h)</h3>
@@ -64,7 +64,7 @@ export const AnomalyTrendChart = () => {
                 </div>
             </div>
 
-            <div className="p-4 h-56">
+            <div className="p-4 h-56" style={{ minWidth: 0, minHeight: 0 }}>
                 {isLoading ? (
                     <div className="h-full flex items-center justify-center text-gray-600 text-sm">
                         Loading trend data...
