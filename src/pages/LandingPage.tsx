@@ -1,7 +1,13 @@
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import './LandingPage.css';
 import { useNavigate } from 'react-router-dom';
+
+declare global {
+  interface Window {
+    THREE: any;
+  }
+}
 
 export default function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -13,10 +19,10 @@ export default function LandingPage() {
     // CURSOR
     const cd = document.getElementById('cd');
     const cr = document.getElementById('cr');
-    let rafId;
+    let rafId: number;
     if (cd && cr) {
       let mx = 0, my = 0, rx = 0, ry = 0;
-      const onMove = (e) => { mx = e.clientX; my = e.clientY; };
+      const onMove = (e: MouseEvent) => { mx = e.clientX; my = e.clientY; };
       document.addEventListener('mousemove', onMove);
       const anim = () => {
         rx += (mx - rx) * 0.13;
@@ -99,13 +105,13 @@ export default function LandingPage() {
     sc.add(grid);
     
     let mx = 0, my = 0, tt = 0;
-    const onMove = e => { 
+    const onMove = (e: MouseEvent) => { 
       mx = (e.clientX / window.innerWidth - 0.5) * 2; 
       my = (e.clientY / window.innerHeight - 0.5) * 2; 
     };
     document.addEventListener('mousemove', onMove);
     
-    let rafId;
+    let rafId: number;
     const tick = () => {
       tt += 0.006;
       mat.uniforms.t.value = tt;
@@ -137,22 +143,23 @@ export default function LandingPage() {
   useEffect(() => {
     // 3D CARD TILT
     const cards = document.querySelectorAll('[data-tilt]');
-    const cleanups = [];
+    const cleanups: (() => void)[] = [];
     cards.forEach(card => {
-      const onMove = e => {
-        const b = card.getBoundingClientRect();
+      const htmlCard = card as HTMLElement;
+      const onMove = (e: MouseEvent) => {
+        const b = htmlCard.getBoundingClientRect();
         const x = ((e.clientX - b.left) / b.width - 0.5) * 2;
         const y = ((e.clientY - b.top) / b.height - 0.5) * 2;
-        card.style.transform = `perspective(900px) rotateY(${x * 9}deg) rotateX(${-y * 7}deg) translateZ(10px)`;
-        card.style.setProperty('--px', `${(x + 1) / 2 * 100}%`);
-        card.style.setProperty('--py', `${(y + 1) / 2 * 100}%`);
+        htmlCard.style.transform = `perspective(900px) rotateY(${x * 9}deg) rotateX(${-y * 7}deg) translateZ(10px)`;
+        htmlCard.style.setProperty('--px', `${(x + 1) / 2 * 100}%`);
+        htmlCard.style.setProperty('--py', `${(y + 1) / 2 * 100}%`);
       };
-      const onLeave = () => { card.style.transform = ''; };
-      card.addEventListener('mousemove', onMove);
-      card.addEventListener('mouseleave', onLeave);
+      const onLeave = () => { htmlCard.style.transform = ''; };
+      htmlCard.addEventListener('mousemove', onMove);
+      htmlCard.addEventListener('mouseleave', onLeave);
       cleanups.push(() => {
-        card.removeEventListener('mousemove', onMove);
-        card.removeEventListener('mouseleave', onLeave);
+        htmlCard.removeEventListener('mousemove', onMove);
+        htmlCard.removeEventListener('mouseleave', onLeave);
       });
     });
 
@@ -170,8 +177,11 @@ export default function LandingPage() {
 
     // SMOOTH SCROLL
     const smoothLinks = document.querySelectorAll('a[href^="#"]');
-    const onLinkClick = (e) => {
-      const t = document.querySelector(e.currentTarget.getAttribute('href'));
+    const onLinkClick = (e: Event) => {
+      const target = e.currentTarget as HTMLAnchorElement;
+      const selector = target.getAttribute('href');
+      if (!selector) return;
+      const t = document.querySelector(selector);
       if (t) {
         e.preventDefault();
         t.scrollIntoView({ behavior: 'smooth', block: 'start' });
