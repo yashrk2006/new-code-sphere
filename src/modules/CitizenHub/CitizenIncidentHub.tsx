@@ -11,7 +11,6 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
-const socket = io(API_BASE);
 
 interface CitizenIncident {
     id: string;
@@ -52,9 +51,14 @@ export default function CitizenIncidentHub() {
     const [loadingId, setLoadingId] = useState<string | null>(null);
 
     useEffect(() => {
+        const socket = io(API_BASE);
         const fetchIncidents = async () => {
-            const { data } = await axios.get(`${API_BASE}/api/citizen/incidents`);
-            setIncidents(data);
+            try {
+                const { data } = await axios.get(`${API_BASE}/api/citizen/incidents`);
+                setIncidents(data);
+            } catch (e) {
+                // Backend may not have citizen routes yet; show empty state
+            }
         };
         fetchIncidents();
 
@@ -64,6 +68,7 @@ export default function CitizenIncidentHub() {
         return () => {
             socket.off('citizen_incident_new');
             socket.off('citizen_incident_updated');
+            socket.disconnect();
         };
     }, []);
 
