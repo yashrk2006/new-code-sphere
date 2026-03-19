@@ -16,6 +16,7 @@ import CitizenLogin from './citizen/CitizenLogin';
 import CitizenDashboard from './citizen/CitizenDashboard';
 import CitizenLayout from './citizen/CitizenLayout';
 import CitizenIncidentHub from './modules/CitizenHub/CitizenIncidentHub';
+import CitizenReport from './citizen/ReportModal';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { useSocket } from './hooks/useSocket';
@@ -42,6 +43,7 @@ const AnimatedRoutes = () => {
           <Route index element={<CitizenLanding />} />
           <Route path="login" element={<CitizenLogin />} />
           <Route path="dashboard" element={<CitizenDashboard />} />
+          <Route path="report" element={<CitizenReport />} />
         </Route>
 
         {/* Secure Dashboard Route (Admin) */}
