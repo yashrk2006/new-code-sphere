@@ -12,7 +12,7 @@ export default function CitizenLogin() {
         e.preventDefault();
         if (name && phone) {
             localStorage.setItem('citizen_session', JSON.stringify({ name, phone }));
-            navigate('/citizen/report');
+            navigate('/citizen/dashboard');
         }
     };
 
