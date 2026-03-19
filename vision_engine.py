@@ -257,6 +257,7 @@ def run_inference():
     last_alert_time: dict[str, float] = {}  # label → last POST time
     ALERT_COOLDOWN = 10.0  # Min seconds between same alert type
     frame_count = 0
+    show_video = True
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -294,6 +295,13 @@ def run_inference():
                 det = {"label": label, "conf": conf,
                        "x": x_pct, "y": y_pct, "w": w_pct, "h": h_pct}
                 detections.append(det)
+                
+                # Draw bounding box on the local camera feed
+                hex_str = get_color(label).lstrip('#')
+                bgr_color = tuple(int(hex_str[i:i+2], 16) for i in (0, 2, 4))[::-1]
+                cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), bgr_color, 2)
+                cv2.putText(frame, f"{label} {conf:.2f}", (int(x1), int(y1)-10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, bgr_color, 2)
 
                 boxes_payload.append({
                     "id": f"{label}-{x_pct:.0f}-{y_pct:.0f}",
@@ -318,6 +326,17 @@ def run_inference():
                 sio.emit(f"boxes_{NODE_ID}", boxes_payload)
             except Exception:
                 pass
+
+        # ── Show on Local Screen ──
+        if show_video:
+            try:
+                cv2.imshow("Vision AIoT Edge Node [Live Feed]", frame)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    print(f"[{NODE_ID}] User manually stopped the camera.")
+                    break
+            except cv2.error:
+                print(f"[{NODE_ID}] ⚠ OpenCV UI not supported on this OS. Running headless instead!")
+                show_video = False
 
         # ── Trigger Gemini (event-driven, non-blocking) ──
         if gemini_model:

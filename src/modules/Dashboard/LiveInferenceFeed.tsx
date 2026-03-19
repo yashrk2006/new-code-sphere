@@ -28,7 +28,7 @@ export default function LiveInferenceFeed({ streamUrl, cameraId }: Props) {
         // Prevent localhost connection errors on Vercel demo
         if (window.location.hostname.includes('vercel.app')) return;
 
-        const SOCKET_URL = import.meta.env.VITE_WS_URL || 'http://localhost:4000';
+        const SOCKET_URL = import.meta.env.VITE_WS_URL || import.meta.env.VITE_API_URL || 'http://localhost:4000';
         const socket = io(SOCKET_URL);
         socketRef.current = socket;
 
