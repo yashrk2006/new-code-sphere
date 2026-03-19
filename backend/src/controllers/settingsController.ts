@@ -1,7 +1,4 @@
 import { Request, Response } from 'express';
-import { SettingsModel } from '../models';
-import mongoose from 'mongoose';
-
 const DEFAULT_SETTINGS = {
     systemName: 'VisionAIoT Campus Alpha',
     aiConfidenceThreshold: 72,
@@ -22,19 +19,7 @@ let fallbackSettings = { ...DEFAULT_SETTINGS };
 
 /** GET /api/settings */
 export const getSettings = async (_req: Request, res: Response): Promise<void> => {
-    try {
-        if (mongoose.connection.readyState === 1) {
-            let doc = await SettingsModel.findOne();
-            if (!doc) {
-                // Seed default
-                doc = await SettingsModel.create(DEFAULT_SETTINGS);
-            }
-            res.json(doc);
-            return;
-        }
-    } catch (e) {
-        // Fallback
-    }
+        // Removed mongoose
     
     res.json(fallbackSettings);
 };
@@ -63,19 +48,7 @@ export const updateSettings = async (req: Request, res: Response): Promise<void>
             notificationEmail: fallbackSettings.notificationEmail,
         };
 
-        if (mongoose.connection.readyState === 1) {
-            let doc = await SettingsModel.findOne();
-            if (doc) {
-                Object.assign(doc, newConfig);
-                await doc.save();
-                res.json(doc);
-                return;
-            } else {
-                doc = await SettingsModel.create(newConfig);
-                res.json(doc);
-                return;
-            }
-        }
+        // Removed mongoose
         
         // Fallback store update
         fallbackSettings = { ...fallbackSettings, ...newConfig };

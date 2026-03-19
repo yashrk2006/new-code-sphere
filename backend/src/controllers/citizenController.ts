@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Server } from 'socket.io';
 import { supabaseAdmin } from '../lib/supabase';
+import { analyzeIncident } from '../services/geminiAnalysisService';
 
 export interface CitizenIncident {
     id: string;
@@ -16,6 +17,13 @@ export interface CitizenIncident {
     ai_priority: 'CRITICAL' | 'HIGH' | 'NORMAL';
     is_verified_red_flag: boolean;
     eta?: string;
+    // AI fields
+    ai_credibility_score?: number;
+    ai_summary?: string;
+    ai_recommended_action?: string;
+    ai_image_verdict?: string;
+    ai_location_context?: string;
+    ai_analysis_status?: 'PENDING' | 'PROCESSING' | 'DONE' | 'SKIPPED' | 'FAILED';
 }
 
 const priorityMap: Record<string, 'CRITICAL' | 'HIGH' | 'NORMAL'> = {
@@ -23,6 +31,48 @@ const priorityMap: Record<string, 'CRITICAL' | 'HIGH' | 'NORMAL'> = {
     Crowd: 'HIGH',
     Municipal: 'NORMAL',
 };
+
+// ─── Async AI enrichment — runs AFTER responding to the citizen ──────────────
+async function runGeminiAnalysis(incident: CitizenIncident, io: Server): Promise<void> {
+    // Mark as processing
+    await supabaseAdmin
+        .from('citizen_incidents')
+        .update({ ai_analysis_status: 'PROCESSING' })
+        .eq('id', incident.id);
+
+    const result = await analyzeIncident({
+        category: incident.category,
+        description: incident.description,
+        image_url: incident.image_url,
+        location: incident.location,
+    });
+
+    // Persist results
+    const { data: updated } = await supabaseAdmin
+        .from('citizen_incidents')
+        .update({
+            ai_credibility_score: result.credibility_score,
+            ai_summary: result.summary,
+            ai_recommended_action: result.recommended_action,
+            ai_image_verdict: result.image_verdict,
+            ai_location_context: result.location_context,
+            ai_analysis_status: result.status,
+            // Upgrade priority if AI gives high credibility + critical category
+            ai_priority: result.credibility_score >= 80 && incident.category === 'Violence'
+                ? 'CRITICAL'
+                : priorityMap[incident.category] || 'NORMAL',
+            is_verified_red_flag: result.credibility_score >= 70 && incident.category === 'Violence',
+        })
+        .eq('id', incident.id)
+        .select()
+        .single();
+
+    if (updated) {
+        // Push enriched incident to admin dashboard in real-time
+        io.emit('citizen_incident_updated', updated);
+        console.log(`[Gemini] ✅ Incident ${incident.id} analyzed — score: ${result.credibility_score}, status: ${result.status}`);
+    }
+}
 
 export const createCitizenControllers = (io: Server) => ({
 
@@ -44,6 +94,7 @@ export const createCitizenControllers = (io: Server) => ({
             status: 'REPORTED',
             ai_priority: priorityMap[category] || 'NORMAL',
             is_verified_red_flag: category === 'Violence',
+            ai_analysis_status: 'PENDING',
             timestamp: new Date().toISOString(),
         };
 
@@ -58,8 +109,15 @@ export const createCitizenControllers = (io: Server) => ({
             return res.status(500).json({ error: error.message });
         }
 
-        // Emit real-time event to all connected admin dashboards
+        // 1. Immediately notify admin of the raw report
         io.emit('citizen_incident_new', data);
+
+        // 2. Run Gemini analysis in background (non-blocking)
+        setImmediate(() => {
+            runGeminiAnalysis(data as CitizenIncident, io).catch(err =>
+                console.error('[Gemini] Background analysis failed:', err)
+            );
+        });
 
         return res.status(201).json(data);
     },
@@ -76,6 +134,19 @@ export const createCitizenControllers = (io: Server) => ({
             return res.status(500).json({ error: error.message });
         }
 
+        return res.json(data);
+    },
+
+    // GET /api/citizen/incidents/:id  — full detail view with history
+    getIncident: async (req: Request, res: Response) => {
+        const { id } = req.params;
+        const { data, error } = await supabaseAdmin
+            .from('citizen_incidents')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) return res.status(404).json({ error: 'Incident not found' });
         return res.json(data);
     },
 

@@ -1,9 +1,6 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { AuditLogModel } from '../models';
 import { cameraStore } from './cameraController';
-import { dispatchViolenceAlert } from '../services/notificationService';
-
 // Track last heartbeat time per camera for timeout detection
 export const cameraHeartbeats = new Map<string, number>();
 
@@ -69,13 +66,8 @@ export const createAlert = async (req: Request, res: Response): Promise<void> =>
         const decoded = jwt.verify(token, secret) as any;
         edgeNodeId = decoded.edge_node || req.body.location || 'CAM-04';
 
-        // Log Token Usage to Audit Trail
-        const log = new AuditLogModel({
-            action: `${edgeNodeId} authenticated via Edge Token.`,
-            actor_email: 'edge-system',
-            ip_address: req.ip || '0.0.0.0'
-        });
-        await log.save();
+        // Audit logging disabled for mock
+        console.log(`${edgeNodeId} authenticated via Edge Token.`);
     } catch (e) {
         console.log(`[Auth Failed] Invalid Edge Token from ${req.ip}`);
         res.status(401).json({ error: "Unauthorized Edge Node: Invalid Token" });
@@ -147,14 +139,8 @@ export const createAlertOpen = async (req: Request, res: Response): Promise<void
     }
 
     // Log to Audit Trail
-    try {
-        const log = new AuditLogModel({
-            action: `ANOMALY_DETECTED: ${anomaly.type} at ${anomaly.camera_id} (${Math.round(confDec * 100)}% confidence)`,
-            actor_email: 'SYSTEM/AI',
-            ip_address: req.ip || '0.0.0.0'
-        });
-        await log.save();
-    } catch(e) {}
+        // Audit logging disabled
+        // console.log(`ANOMALY_DETECTED`);
 
     console.log(`[Edge Anomaly] ${anomaly.type} at ${anomaly.camera_id}`);
 
@@ -189,11 +175,8 @@ export const createAlertOpen = async (req: Request, res: Response): Promise<void
                 eventBus.emit('force_stream_switch', anomaly.camera_id);
             }
             
-            // Dispatch SMS/WhatsApp
-            dispatchViolenceAlert({
-                camId: anomaly.camera_id,
-                details: req.body.details || 'Violent incident detected'
-            });
+            // dispatchViolenceAlert disabled for mock
+            console.log('Violent incident detected');
         }
     } catch (e) {
         console.error("Error in alert post-processing:", e);

@@ -1,10 +1,9 @@
 import { Router } from 'express';
-import { getCameras, addCamera, removeCamera } from '../controllers/cameraController';
+import { getCameras, scanNetworkCameras } from '../controllers/cameraController';
 
 const router = Router();
 
 router.get('/', getCameras);
-router.post('/', addCamera);
-router.delete('/:id', removeCamera);
+router.post('/scan', scanNetworkCameras);
 
 export default router;

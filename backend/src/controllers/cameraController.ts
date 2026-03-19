@@ -1,7 +1,4 @@
 import { Request, Response } from 'express';
-import { CameraNodeModel } from '../models';
-import mongoose from 'mongoose';
-
 export interface CameraNode {
     id: string; // Used for frontend mapping
     name: string;
@@ -43,11 +40,7 @@ for (let i = 1; i <= 50; i++) {
 /** GET /api/cameras */
 export const getCameras = async (_req: Request, res: Response): Promise<void> => {
     try {
-        if (mongoose.connection.readyState === 1) {
-            const cameras = await CameraNodeModel.find().sort({ name: 1 });
-            res.json(cameras.map(c => ({ ...c.toObject(), id: c.name })));
-            return;
-        }
+        // Removed mongoose
     } catch (e) {
         // Fallback below
     }
@@ -87,21 +80,7 @@ export const scanNetworkCameras = async (req: Request, res: Response): Promise<v
         cameraStore.set(id, newNode);
         discovered.push(newNode);
 
-        if (mongoose.connection.readyState === 1) {
-            try {
-                // Upsert to ignore duplicates
-                await CameraNodeModel.findOneAndUpdate({ name: id }, {
-                    name: id,
-                    ipAddress: mockIp,
-                    status: 'UP',
-                    sector: newNode.sector,
-                    lat: newNode.lat,
-                    lng: newNode.lng
-                }, { upsert: true });
-            } catch (e) {
-                // Handle duplicate key edge cases if any
-            }
-        }
+        // Removed mongoose
     }
 
     res.json({ message: `Successfully discovered ${newCount} new edge nodes.`, discovered });

@@ -8,6 +8,7 @@ export default (io: Server): Router => {
 
     router.post('/report', ctrl.submitReport);
     router.get('/incidents', ctrl.getIncidents);
+    router.get('/incidents/:id', ctrl.getIncident);
     router.post('/incidents/:id/dispatch', ctrl.dispatchIncident);
     router.post('/incidents/:id/resolve', ctrl.resolveIncident);
 

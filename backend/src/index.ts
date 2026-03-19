@@ -44,7 +44,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/alerts', alertRoutes);
 app.use('/api/analytics', analyticsRoutes);
-app.use('/api/edge', edgeRoutes(io));
+app.use('/api/edge', edgeRoutes);
 app.use('/api/security', securityRoutes);
 app.use('/api/storage', storageRoutes);
 app.use('/api/settings', settingsRoutes);
