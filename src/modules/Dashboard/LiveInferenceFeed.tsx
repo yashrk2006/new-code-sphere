@@ -26,8 +26,7 @@ export default function LiveInferenceFeed({ streamUrl, cameraId }: Props) {
     const lastBoxTime = useRef<number>(Date.now());
 
     useEffect(() => {
-        // Prevent localhost connection errors on Vercel demo
-        if (window.location.hostname.includes('vercel.app')) return;
+        // Initial connection logic
 
         const SOCKET_URL = getSocketUrl();
         const socket = io(SOCKET_URL);
