@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, ArrowRight, Phone } from 'lucide-react';
+import { Shield, ArrowRight, Phone, User } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function CitizenLogin() {
@@ -17,65 +17,88 @@ export default function CitizenLogin() {
     };
 
     return (
-        <div className="min-h-screen bg-[#020617] text-white flex flex-col justify-center p-6 relative overflow-hidden">
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none"></div>
-            <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/10 blur-[100px] rounded-full pointer-events-none"></div>
+        <div className="min-h-screen bg-white flex flex-col max-w-[430px] mx-auto relative overflow-hidden">
+            {/* Top accent gradient */}
+            <div className="absolute inset-x-0 top-0 h-64 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-b-[48px]" />
 
-            <motion.div 
-                initial={{ opacity: 0, y: 20 }}
+            {/* Header */}
+            <div className="relative z-10 px-6 pt-14 pb-10 flex flex-col items-center text-center">
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center mb-5 shadow-xl"
+                >
+                    <Shield className="w-8 h-8 text-white" />
+                </motion.div>
+                <motion.h2
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="text-2xl font-black text-white tracking-tight mb-1"
+                >
+                    Secure Access
+                </motion.h2>
+                <p className="text-sm text-blue-200">Enter your details to access the portal</p>
+            </div>
+
+            {/* Form Card */}
+            <motion.div
+                initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="w-full max-w-sm mx-auto z-10"
+                transition={{ delay: 0.2 }}
+                className="relative z-10 flex-1 bg-white rounded-t-3xl shadow-2xl px-6 pt-8 pb-8 -mt-4"
             >
-                <div className="flex justify-center mb-8">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 p-[2px] shadow-[0_0_30px_rgba(75,43,238,0.2)]">
-                        <div className="w-full h-full bg-[#040D21] rounded-2xl flex items-center justify-center">
-                            <Shield className="w-8 h-8 text-white" />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="text-center mb-10">
-                    <h2 className="text-2xl font-bold tracking-tight mb-2">Secure Authentication</h2>
-                    <p className="text-sm text-slate-400">Enter your details to access the portal and track your civic reports.</p>
-                </div>
-
+                <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-6">Identity Verification</h3>
                 <form onSubmit={handleLogin} className="space-y-5">
+                    {/* Name Field */}
                     <div>
-                        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Full Name</label>
-                        <input 
-                            type="text" 
-                            required
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            placeholder="e.g. Rajan Sharma"
-                            className="w-full bg-[#040D21] border border-slate-800 rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Mobile Number</label>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Full Name</label>
                         <div className="relative">
-                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                            <input 
-                                type="tel" 
+                            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                                type="text"
                                 required
-                                value={phone}
-                                onChange={(e) => setPhone(e.target.value)}
-                                placeholder="+91 98765 43210"
-                                className="w-full bg-[#040D21] border border-slate-800 rounded-xl pl-11 pr-4 py-3.5 text-sm text-white focus:outline-none focus:border-blue-500 transition-colors"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder="e.g. Rajan Sharma"
+                                className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-11 pr-4 py-3.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:bg-white transition-all"
                             />
                         </div>
                     </div>
 
-                    <button 
+                    {/* Phone Field */}
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Mobile Number</label>
+                        <div className="relative">
+                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                                type="tel"
+                                required
+                                value={phone}
+                                onChange={(e) => setPhone(e.target.value)}
+                                placeholder="+91 98765 43210"
+                                className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-11 pr-4 py-3.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:bg-white transition-all"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Submit */}
+                    <button
                         type="submit"
-                        className="w-full mt-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                        className="w-full mt-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-4 px-6 rounded-2xl flex items-center justify-center gap-2.5 shadow-lg shadow-blue-200 hover:shadow-xl hover:shadow-blue-300 active:scale-[0.98] transition-all"
                     >
-                        Access Portal <ArrowRight className="w-4 h-4" />
+                        Access Portal
+                        <ArrowRight className="w-4 h-4" />
                     </button>
-                    <p className="text-center text-[10px] text-slate-500 mt-4 leading-relaxed">
-                        By continuing, you agree to the Civic Shield terms of service and privacy policy. Your data is encrypted end-to-end.
-                    </p>
                 </form>
+
+                {/* Divider & trust note */}
+                <div className="mt-8 pt-5 border-t border-gray-100 text-center">
+                    <p className="text-[11px] text-gray-400 flex items-center justify-center gap-1.5">
+                        <Shield className="w-3 h-3 text-blue-400" />
+                        Your data is encrypted end-to-end and never shared.
+                    </p>
+                </div>
             </motion.div>
         </div>
     );
