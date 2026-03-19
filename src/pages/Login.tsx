@@ -18,16 +18,11 @@ export default function Login() {
         setError('');
 
         setTimeout(() => {
-            if (email === 'admin@visionaiot.com' && password === 'admin') {
-                const mockUser = { id: 'usr_1', email: 'admin@visionaiot.com', role: 'Admin' as const };
-                const mockToken = 'mock_jwt_token_for_demo';
-                setAuth(mockUser, mockToken);
-                navigate('/dashboard');
-            } else {
-                setError('Invalid credentials. Use admin@visionaiot.com / admin');
-                setIsLoading(false);
-            }
-        }, 800);
+            const mockUser = { id: 'usr_1', email: 'admin@visionaiot.com', role: 'Admin' as const };
+            const mockToken = 'mock_jwt_token_for_demo';
+            setAuth(mockUser, mockToken);
+            navigate('/dashboard');
+        }, 300);
     };
 
     return (
@@ -126,7 +121,6 @@ export default function Login() {
                                         onChange={(e) => setEmail(e.target.value)}
                                         placeholder="admin@visionaiot.com"
                                         className="w-full bg-white/5 text-white text-base border border-white/5 rounded-2xl pl-12 pr-4 py-4 focus:outline-none focus:border-blue-500/50 focus:bg-white/10 transition-all placeholder:text-white/10"
-                                        required
                                     />
                                 </div>
                             </div>
@@ -146,7 +140,6 @@ export default function Login() {
                                         onChange={(e) => setPassword(e.target.value)}
                                         placeholder="••••••••"
                                         className="w-full bg-white/5 text-white text-base border border-white/5 rounded-2xl pl-12 pr-4 py-4 focus:outline-none focus:border-blue-500/50 focus:bg-white/10 transition-all placeholder:text-white/10"
-                                        required
                                     />
                                 </div>
                             </div>

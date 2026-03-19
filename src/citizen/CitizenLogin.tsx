@@ -10,10 +10,8 @@ export default function CitizenLogin() {
 
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        if (name && phone) {
-            localStorage.setItem('citizen_session', JSON.stringify({ name, phone }));
-            navigate('/citizen/dashboard');
-        }
+        localStorage.setItem('citizen_session', JSON.stringify({ name: name || 'Demo Citizen', phone: phone || 'Demo Phone' }));
+        navigate('/citizen/dashboard');
     };
 
     return (
@@ -57,7 +55,6 @@ export default function CitizenLogin() {
                             <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                             <input
                                 type="text"
-                                required
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 placeholder="e.g. Rajan Sharma"
@@ -73,7 +70,6 @@ export default function CitizenLogin() {
                             <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                             <input
                                 type="tel"
-                                required
                                 value={phone}
                                 onChange={(e) => setPhone(e.target.value)}
                                 placeholder="+91 98765 43210"
