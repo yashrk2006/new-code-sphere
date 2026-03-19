@@ -3,6 +3,7 @@ services:
     name: vision-aiot-backend
     env: node
     region: oregon
+    plan: free
     rootDir: backend
     buildCommand: npm install && npx prisma generate && npm run build
     startCommand: npm start
