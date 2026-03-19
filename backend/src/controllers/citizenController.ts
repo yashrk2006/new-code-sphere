@@ -12,6 +12,7 @@ export interface CitizenIncident {
     location: { lat: number; lng: number };
     image_url: string;
     status: 'REPORTED' | 'UNDER REVIEW' | 'TEAM DISPATCHED' | 'RESOLVED';
+    dispatched_to?: string;
     resolution_image_url?: string;
     timestamp: string;
     ai_priority: 'CRITICAL' | 'HIGH' | 'NORMAL';
@@ -136,7 +137,11 @@ export const createCitizenControllers = (io: Server) => ({
 
         const { data, error } = await supabaseAdmin
             .from('citizen_incidents')
-            .update({ status: 'TEAM DISPATCHED', eta })
+            .update({ 
+                status: 'TEAM DISPATCHED', 
+                eta,
+                dispatched_to: req.body.department || 'General Response'
+            })
             .eq('id', id)
             .select()
             .single();

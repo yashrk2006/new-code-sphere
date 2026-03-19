@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -28,6 +28,7 @@ interface CitizenIncident {
     ai_priority: 'CRITICAL' | 'HIGH' | 'NORMAL';
     is_verified_red_flag: boolean;
     eta?: string;
+    dispatched_to?: string;
     // AI analysis fields
     ai_credibility_score?: number;
     ai_summary?: string;
@@ -148,12 +149,27 @@ function AiPanel({ inc }: { inc: CitizenIncident }) {
     );
 }
 
+// ─── Map Updater ─────────────────────────────────────────────────────────────
+function MapUpdater({ center }: { center?: { lat: number; lng: number } }) {
+    const map = useMap();
+    useEffect(() => {
+        if (center) {
+            map.flyTo([center.lat, center.lng], 16, { duration: 1.5 });
+        }
+    }, [center, map]);
+    return null;
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function CitizenIncidentHub() {
     const navigate = useNavigate();
     const [incidents, setIncidents] = useState<CitizenIncident[]>([]);
     const [loadingId, setLoadingId] = useState<string | null>(null);
     const [filter, setFilter] = useState<'ALL' | 'REPORTED' | 'TEAM DISPATCHED' | 'RESOLVED'>('ALL');
+    const [activeIncId, setActiveIncId] = useState<string | null>(null);
+    const [forwardDept, setForwardDept] = useState<Record<string, string>>({});
+    
+    const DEPARTMENTS = ['Police Department', 'Fire Rescue', 'Medical/EMS', 'Municipal Services', 'Traffic Control'];
 
     useEffect(() => {
         const socket = io(API_BASE);
@@ -182,13 +198,14 @@ export default function CitizenIncidentHub() {
         setLoadingId(id);
         const payload = action === 'resolve'
             ? { image_url: 'https://images.unsplash.com/photo-1584483783936-cecb8da1c22e?w=800' }
-            : {};
-        await axios.post(`${API_BASE}/api/citizen/incidents/${id}/${action}`, payload);
+            : { department: forwardDept[id] };
 
-        if (action === 'dispatch') {
-            const inc = incidents.find(i => i.id === id);
-            if (inc?.location) navigate(`/dashboard/map?lat=${inc.location.lat}&lng=${inc.location.lng}`);
+        // In a real system, forwarding to a department would send emails/integrations
+        if (action === 'dispatch' && forwardDept[id]) {
+            console.log(`Forwarding report ${id} to ${forwardDept[id]}...`);
         }
+
+        await axios.post(`${API_BASE}/api/citizen/incidents/${id}/${action}`, payload);
         setLoadingId(null);
     };
 
@@ -248,14 +265,23 @@ export default function CitizenIncidentHub() {
                                 url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                                 attribution='&copy; <a href="https://carto.com/">CartoDB</a>'
                             />
+                            <MapUpdater center={activeIncId ? incidents.find(i => i.id === activeIncId)?.location : undefined} />
                             {incidents.map(inc => (
                                 <Marker key={inc.id} position={[inc.location.lat, inc.location.lng]} icon={icons[inc.status]}>
                                     <Popup>
                                         <div className="p-1 min-w-[180px]">
-                                            <p className="font-bold text-sm mb-0.5">{inc.category}</p>
+                                            <div className="flex items-center justify-between mb-0.5">
+                                                <h4 className="text-white font-medium flex-1 mr-2">{inc.category}</h4>
+                                                <span className="text-[10px] text-slate-400">{new Date(inc.timestamp).toLocaleString()}</span>
+                                            </div>
                                             <p className="text-xs text-slate-500 mb-1">{inc.status}</p>
                                             {inc.ai_credibility_score !== undefined && (
                                                 <p className="text-xs font-bold text-orange-500 mb-1">AI Score: {inc.ai_credibility_score}%</p>
+                                            )}
+                                            {inc.dispatched_to && (
+                                                <div className="text-[10px] text-blue-400 font-bold mt-0.5">
+                                                    Forwarded to: {inc.dispatched_to}
+                                                </div>
                                             )}
                                             {inc.ai_recommended_action && (
                                                 <p className="text-[10px] text-slate-600">{inc.ai_recommended_action}</p>
@@ -298,7 +324,9 @@ export default function CitizenIncidentHub() {
                                         key={inc.id}
                                         initial={{ opacity: 0, x: 20 }}
                                         animate={{ opacity: 1, x: 0 }}
-                                        className={`bg-slate-900/50 border rounded-xl p-4 transition-colors ${
+                                        onClick={() => setActiveIncId(inc.id)}
+                                        className={`bg-slate-900/50 border rounded-xl p-4 transition-colors cursor-pointer ${
+                                            activeIncId === inc.id ? 'border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.15)] bg-slate-800' :
                                             inc.is_verified_red_flag && inc.status === 'REPORTED'
                                                 ? 'border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.1)]'
                                                 : 'border-slate-800 hover:border-slate-600'
@@ -325,6 +353,7 @@ export default function CitizenIncidentHub() {
                                                     </div>
                                                     <AiScoreBadge score={inc.ai_credibility_score} status={inc.ai_analysis_status} />
                                                     <p className="text-[10px] text-slate-400 mt-1 line-clamp-1">{inc.description || '—'}</p>
+                                                    {inc.dispatched_to && <p className="text-[10px] text-blue-400 font-bold mt-1 tracking-wide uppercase flex items-center gap-1"><Shield className="w-3 h-3" /> {inc.dispatched_to}</p>}
                                                     <div className="flex items-center gap-2 mt-1 text-[9px] text-slate-500 font-mono">
                                                         <span>{inc.citizen_name}</span>
                                                         <span>•</span>
@@ -339,26 +368,49 @@ export default function CitizenIncidentHub() {
                                         {/* AI Panel */}
                                         <AiPanel inc={inc} />
 
-                                        {/* Action buttons */}
-                                        <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800/50 mt-3">
+                                        <div className="flex flex-col gap-2 w-full pt-3 border-t border-slate-800/50 mt-3">
                                             {inc.status === 'REPORTED' || inc.status === 'UNDER REVIEW' ? (
-                                                <button
-                                                    onClick={() => handleAction(inc.id, 'dispatch')}
-                                                    disabled={loadingId === inc.id}
-                                                    className="w-full sm:w-auto px-4 bg-green-600 hover:bg-green-500 text-white text-[10px] font-bold py-2 rounded flex items-center justify-center gap-2 transition-transform active:scale-95 disabled:opacity-50 shadow-[0_0_15px_rgba(22,163,74,0.3)]"
-                                                >
-                                                    <Navigation size={13} /> NAVIGATE TO INCIDENT
-                                                </button>
+                                                <div className="flex flex-col gap-2 w-full">
+                                                    <select 
+                                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-300 focus:ring-blue-500 focus:outline-none"
+                                                        value={forwardDept[inc.id] || ''}
+                                                        onChange={(e) => setForwardDept(prev => ({...prev, [inc.id]: e.target.value}))}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <option value="" disabled>Select Department to Forward Report...</option>
+                                                        {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+                                                    </select>
+                                                    
+                                                    <div className="flex gap-2 w-full">
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleAction(inc.id, 'dispatch'); }}
+                                                            disabled={loadingId === inc.id || !forwardDept[inc.id]}
+                                                            className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold py-2 rounded flex items-center justify-center gap-2 transition-transform active:scale-95 disabled:opacity-50"
+                                                        >
+                                                            FORWARD & DISPATCH
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => { 
+                                                                e.stopPropagation(); 
+                                                                navigate(`/dashboard/map?lat=${inc.location.lat}&lng=${inc.location.lng}`); 
+                                                            }}
+                                                            className="px-3 bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-bold py-2 rounded flex items-center justify-center transition-colors border border-slate-700"
+                                                            title="Compute Route on Map"
+                                                        >
+                                                            <Navigation size={13} />
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             ) : inc.status === 'TEAM DISPATCHED' ? (
                                                 <button
-                                                    onClick={() => handleAction(inc.id, 'resolve')}
+                                                    onClick={(e) => { e.stopPropagation(); handleAction(inc.id, 'resolve'); }}
                                                     disabled={loadingId === inc.id}
-                                                    className="w-full sm:w-auto px-4 py-2 text-xs font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/50 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                                                    className="w-full sm:w-auto px-4 py-2 text-xs font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/50 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 ml-auto"
                                                 >
                                                     <CheckCircle2 className="w-3.5 h-3.5" /> MARK RESOLVED
                                                 </button>
                                             ) : (
-                                                <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1 uppercase tracking-wider">
+                                                <span className="text-[10px] font-bold text-slate-500 flex items-center justify-end gap-1 uppercase tracking-wider w-full">
                                                     <CheckCircle2 className="w-3.5 h-3.5" /> Case Closed
                                                 </span>
                                             )}

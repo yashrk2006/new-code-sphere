@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { GoogleMap, useLoadScript, Marker, DirectionsRenderer } from '@react-google-maps/api';
+import { GoogleMap, useLoadScript, Marker, DirectionsRenderer, Circle } from '@react-google-maps/api';
+import { useSearchParams } from 'react-router-dom';
 import { useVisionStore } from '../../store/useVisionStore';
 import { useAlertStore } from '../../store/useAlertStore';
 import type { AnomalyAlert } from '../../store/useAlertStore';
@@ -52,9 +53,12 @@ export default function ZoneMap() {
     const alerts = useAlertStore((s) => s.alerts);
 
     const [selectedAlert, setSelectedAlert] = useState<AnomalyAlert | null>(null);
+    const [customDest, setCustomDest] = useState<{ lat: number; lng: number } | null>(null);
     const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
     const [routeInfo, setRouteInfo] = useState<{ distance: string; duration: string } | null>(null);
     const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
+    
+    const [searchParams, setSearchParams] = useSearchParams();
 
     // Get camera details for a given alert
     const getCameraForAlert = useCallback(
@@ -111,21 +115,45 @@ export default function ZoneMap() {
         []
     );
 
-    // Trigger route on alert selection
+    // Trigger route on alert selection or custom destination
     useEffect(() => {
+        // Read from URL if no active selection
+        const latParam = searchParams.get('lat');
+        const lngParam = searchParams.get('lng');
+        
+        if (latParam && lngParam && !selectedAlert) {
+            const lat = parseFloat(latParam);
+            const lng = parseFloat(lngParam);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                setCustomDest({ lat, lng });
+                fetchDirections(lat, lng);
+                if (mapInstance && window.google) {
+                    const bounds = new window.google.maps.LatLngBounds();
+                    bounds.extend(DISPATCH_BASE);
+                    bounds.extend({ lat, lng });
+                    mapInstance.fitBounds(bounds, { top: 50, right: 400, bottom: 50, left: 50 });
+                }
+                return;
+            }
+        } else if (!latParam && !lngParam && customDest && !selectedAlert) {
+            // Clearing URL also clears custom destination
+            setCustomDest(null);
+        }
+
         if (selectedAlert) {
+            setCustomDest(null); // Clear custom destination if an alert is selected
             const cam = getCameraForAlert(selectedAlert.camera_id);
             if (cam?.lat && cam?.lng) {
                 fetchDirections(cam.lat, cam.lng);
                 // Pan map to show both dispatch base and destination
-                if (mapInstance) {
+                if (mapInstance && window.google) {
                     const bounds = new window.google.maps.LatLngBounds();
                     bounds.extend(DISPATCH_BASE);
                     bounds.extend({ lat: cam.lat, lng: cam.lng });
                     mapInstance.fitBounds(bounds, { top: 50, right: 400, bottom: 50, left: 50 });
                 }
             }
-        } else {
+        } else if (!customDest) {
             setDirections(null);
             setRouteInfo(null);
             if (mapInstance) {
@@ -133,17 +161,30 @@ export default function ZoneMap() {
                 mapInstance.setZoom(14);
             }
         }
-    }, [selectedAlert, getCameraForAlert, fetchDirections, mapInstance]);
+    }, [selectedAlert, customDest, searchParams, getCameraForAlert, fetchDirections, mapInstance]);
 
     // Open shareable Google Maps link for field agent
     const openInGoogleMaps = () => {
-        if (!selectedAlert) return;
-        const cam = getCameraForAlert(selectedAlert.camera_id);
-        if (!cam) return;
-        window.open(
-            `https://www.google.com/maps/dir/?api=1&origin=${DISPATCH_BASE.lat},${DISPATCH_BASE.lng}&destination=${cam.lat},${cam.lng}&travelmode=driving`,
-            '_blank'
-        );
+        let destLat: number | undefined;
+        let destLng: number | undefined;
+
+        if (selectedAlert) {
+            const cam = getCameraForAlert(selectedAlert.camera_id);
+            if (cam) {
+                destLat = cam.lat;
+                destLng = cam.lng;
+            }
+        } else if (customDest) {
+            destLat = customDest.lat;
+            destLng = customDest.lng;
+        }
+
+        if (destLat !== undefined && destLng !== undefined) {
+            window.open(
+                `https://www.google.com/maps/dir/?api=1&origin=${DISPATCH_BASE.lat},${DISPATCH_BASE.lng}&destination=${destLat},${destLng}&travelmode=driving`,
+                '_blank'
+            );
+        }
     };
 
     // ─── Loading / Error States ──────────────────────────────
@@ -203,7 +244,10 @@ export default function ZoneMap() {
                         return (
                             <button
                                 key={alert.id}
-                                onClick={() => setSelectedAlert(isSelected ? null : alert)}
+                                onClick={() => {
+                                    setSearchParams({});
+                                    setSelectedAlert(isSelected ? null : alert);
+                                }}
                                 className={`w-full text-left p-3 rounded-xl border transition-all duration-200
                   ${isSelected
                                         ? 'bg-blue-600/10 border-blue-500/40 shadow-[0_0_15px_rgba(37,99,235,0.08)]'
@@ -265,7 +309,6 @@ export default function ZoneMap() {
                         fullscreenControl: false,
                     }}
                 >
-                    {/* Dispatch Base Marker */}
                     <Marker
                         position={DISPATCH_BASE}
                         icon={{
@@ -278,6 +321,23 @@ export default function ZoneMap() {
                         }}
                         title="Dispatch Headquarters"
                     />
+
+                    {/* Custom Citizen Report Destination */}
+                    {customDest && window.google && (
+                        <Marker
+                            position={customDest}
+                            icon={{
+                                path: window.google.maps.SymbolPath.CIRCLE,
+                                fillColor: '#8b5cf6', // Violet
+                                fillOpacity: 0.9,
+                                strokeWeight: 4,
+                                strokeColor: '#a78bfa',
+                                scale: 14,
+                            }}
+                            animation={window.google.maps.Animation.DROP}
+                            title="Citizen Incident Location"
+                        />
+                    )}
 
                     {/* Camera/Alert Markers */}
                     {cameras.map((camera) => {
@@ -337,7 +397,7 @@ export default function ZoneMap() {
 
                 {/* ─── Dispatch Control Panel Overlay ─── */}
                 <AnimatePresence>
-                    {selectedAlert && (
+                    {(selectedAlert || customDest) && (
                         <motion.div
                             key="dispatch-panel"
                             initial={{ opacity: 0, x: 30, scale: 0.95 }}
@@ -353,7 +413,10 @@ export default function ZoneMap() {
                                     <h3 className="text-sm font-bold">Dispatch Control</h3>
                                 </div>
                                 <button
-                                    onClick={() => setSelectedAlert(null)}
+                                    onClick={() => {
+                                        setSelectedAlert(null);
+                                        setSearchParams({});
+                                    }}
                                     className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 transition-colors"
                                 >
                                     <X className="w-4 h-4" />
@@ -363,13 +426,16 @@ export default function ZoneMap() {
                             <div className="p-5 space-y-4">
                                 {/* Target Info */}
                                 <div>
-                                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Target Anomaly</p>
-                                    <p className="text-sm font-bold text-red-400 mt-1">
-                                        {TYPE_LABELS[selectedAlert.type] || selectedAlert.type}
+                                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Target {selectedAlert ? 'Anomaly' : 'Incident'}</p>
+                                    <p className={`text-sm font-bold mt-1 ${selectedAlert ? 'text-red-400' : 'text-violet-400'}`}>
+                                        {selectedAlert ? (TYPE_LABELS[selectedAlert.type] || selectedAlert.type) : 'Citizen Reported Incident'}
                                     </p>
                                     <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
                                         <Camera className="w-3 h-3" />
-                                        {getCameraForAlert(selectedAlert.camera_id)?.name || selectedAlert.camera_id}
+                                        {selectedAlert 
+                                            ? (getCameraForAlert(selectedAlert.camera_id)?.name || selectedAlert.camera_id)
+                                            : `Location: ${customDest?.lat.toFixed(4)}, ${customDest?.lng.toFixed(4)}`
+                                        }
                                     </p>
                                 </div>
 
@@ -398,22 +464,29 @@ export default function ZoneMap() {
                                 )}
 
                                 {/* AI Snapshot */}
-                                <div className="relative rounded-xl overflow-hidden border border-slate-800">
-                                    <img
-                                        src={selectedAlert.image_url}
-                                        alt="Threat Snapshot"
-                                        className="w-full h-32 object-cover"
-                                    />
-                                    <div className="absolute top-2 left-2">
-                                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg backdrop-blur-md ${selectedAlert.severity === 'Critical' ? 'bg-red-500/80 text-white' : 'bg-orange-500/80 text-white'
-                                            }`}>
-                                            {selectedAlert.severity.toUpperCase()}
-                                        </span>
+                                {selectedAlert ? (
+                                    <div className="relative rounded-xl overflow-hidden border border-slate-800">
+                                        <img
+                                            src={selectedAlert.image_url}
+                                            alt="Threat Snapshot"
+                                            className="w-full h-32 object-cover"
+                                        />
+                                        <div className="absolute top-2 left-2">
+                                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg backdrop-blur-md ${selectedAlert.severity === 'Critical' ? 'bg-red-500/80 text-white' : 'bg-orange-500/80 text-white'
+                                                }`}>
+                                                {selectedAlert.severity.toUpperCase()}
+                                            </span>
+                                        </div>
+                                        <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-lg">
+                                            <span className="text-[10px] font-mono text-emerald-400">{selectedAlert.confidence.toFixed(1)}%</span>
+                                        </div>
                                     </div>
-                                    <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-lg">
-                                        <span className="text-[10px] font-mono text-emerald-400">{selectedAlert.confidence.toFixed(1)}%</span>
+                                ) : (
+                                    <div className="bg-violet-500/10 border border-violet-500/30 rounded-xl p-3 flex flex-col items-center justify-center text-center space-y-2">
+                                        <Navigation className="w-6 h-6 text-violet-400 mb-1" />
+                                        <p className="text-xs text-violet-300">Dispatching responder team to citizen reported coordinates.</p>
                                     </div>
-                                </div>
+                                )}
 
                                 {/* Action Buttons */}
                                 <div className="space-y-2 pt-2">
@@ -426,7 +499,10 @@ export default function ZoneMap() {
                                         <ExternalLink className="w-3 h-3 opacity-60" />
                                     </button>
                                     <button
-                                        onClick={() => setSelectedAlert(null)}
+                                        onClick={() => {
+                                            setSelectedAlert(null);
+                                            setSearchParams({});
+                                        }}
                                         className="w-full bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium py-2.5 rounded-xl transition-colors border border-slate-700"
                                     >
                                         Cancel Dispatch
