@@ -14,7 +14,7 @@ export default function AnomalyTrendChart() {
 
     const fetchTrends = async () => {
         try {
-            const resp = await axios.get(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'}/api/stats/anomaly-trends`);
+            const resp = await axios.get(`${import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/stats/anomaly-trends`);
             setData(resp.data);
         } catch (err) {
             console.error('Failed to fetch anomaly trends', err);

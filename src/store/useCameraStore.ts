@@ -29,7 +29,7 @@ export const useCameraStore = create<CameraState>((set) => ({
     fetchCameras: async () => {
         try {
             // For demo, we proxy this through. We'll populate local store directly if backend missing 
-            const { data } = await axios.get(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'}/api/cameras`);
+            const { data } = await axios.get(`${import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/cameras`);
             set({ cameras: data });
         } catch (error) {
             console.warn("Falling back to local registry init for demo / Vercel compatibility", error);
@@ -49,7 +49,7 @@ export const useCameraStore = create<CameraState>((set) => ({
             set((state) => ({ cameras: [...state.cameras, mockResult] }));
 
             // Attempt backend call asynchronously
-            await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'}/api/cameras`, newCam).catch(console.warn);
+            await axios.post(`${import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/cameras`, newCam).catch(console.warn);
         } catch (error) {
             console.error("Failed to register new camera node", error);
         }
@@ -58,7 +58,7 @@ export const useCameraStore = create<CameraState>((set) => ({
     removeCamera: async (id) => {
         try {
             set((state) => ({ cameras: state.cameras.filter(c => c.id !== id) }));
-            await axios.delete(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'}/api/cameras/${id}`).catch(console.warn);
+            await axios.delete(`${import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/cameras/${id}`).catch(console.warn);
         } catch (error) {
             console.error("Failed to remove camera", error);
         }

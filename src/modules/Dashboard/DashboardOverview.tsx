@@ -12,8 +12,8 @@ import AddNodeModal from '../../components/AddNodeModal';
 import AnomalyTrendChart from './AnomalyTrendChart';
 
 // WebSocket connection strings (instantiated inside useEffect to prevent SSR hydration mismatch)
-const SYSTEM_WS_URL = `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000'}/system`;
-const MAIN_WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:4000';
+const SYSTEM_WS_URL = `${import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:4000'}/system`;
+const MAIN_WS_URL = import.meta.env.VITE_WS_URL || import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 export default function CommandCenter() {
     const { alerts, addLiveAlert } = useAlertStore();
@@ -163,7 +163,7 @@ export default function CommandCenter() {
     const handleGenerateReport = async () => {
          try {
              setIsGenerating(true);
-             const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL || ''}/api/reports/daily`, {
+             const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || ''}/api/reports/daily`, {
                  responseType: 'blob', // Important for downloading files
              });
              

@@ -5,7 +5,7 @@ import { useAlertStore } from '../store/useAlertStore';
 import { useEdgeStore } from '../store/useEdgeStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_WS_URL || 'http://localhost:4000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_WS_URL || import.meta.env.VITE_API_URL || 'http://localhost:4000';
 
 export const useSocket = () => {
     const { addAlert, setCameras, updateCameraStatus } = useVisionStore();
