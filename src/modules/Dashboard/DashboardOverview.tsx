@@ -105,10 +105,11 @@ export default function CommandCenter() {
         });
 
         mainSocket.on('init_cameras', (initialCameras) => {
-            // Ensure CAM-04 points to local VITE_CAMERA_URL if not provided
+            const streamUrl = import.meta.env.VITE_STREAM_URL || 'http://localhost:5001/video_feed';
+            // Ensure CAM-04 points to VITE_STREAM_URL (ngrok in prod, localhost in dev)
             const enriched = initialCameras.map((cam: any) => {
                 if (cam.id === 'CAM-04' && !cam.streamUrl) {
-                    return { ...cam, streamUrl: 'http://localhost:5001/video_feed', fps: 30 };
+                    return { ...cam, streamUrl, fps: 30 };
                 }
                 return cam;
             });
