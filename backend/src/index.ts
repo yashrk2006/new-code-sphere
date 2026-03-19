@@ -19,7 +19,9 @@ import settingsRoutes from './routes/settingsRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import statsRoutes from './routes/statsRoutes';
 import reportRoutes from './routes/reportRoutes';
+import cameraRoutes from './routes/cameraRoutes';
 import { addNotification, AppNotification as SystemNotification } from './controllers/notificationController';
+
 import { alertStore, AnomalyAlert } from './controllers/alertController';
 import { edgeNodes } from './controllers/edgeController';
 
@@ -48,6 +50,8 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/cameras', cameraRoutes);
+
 
 // Health check
 app.get('/health', async (_req, res) => {

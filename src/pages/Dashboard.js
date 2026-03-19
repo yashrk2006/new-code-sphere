@@ -1,0 +1,44 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import React, { useState } from 'react';
+import { Camera, AlertTriangle, Activity, Shield, Database, LayoutDashboard, Video, Settings, Search, Menu, X, MapPin, Server as ServerIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAlertStore } from '../store/useAlertStore';
+import { useAuthStore } from '../store/useAuthStore';
+import NotificationDropdown from '../components/NotificationDropdown';
+const MODULE_ORDER = [
+    { path: '/dashboard', title: 'Overview' },
+    { path: '/dashboard/cameras', title: 'Live Cameras' },
+    { path: '/dashboard/alerts', title: 'Anomaly Alerts' },
+    { path: '/dashboard/analytics', title: 'Analytics' },
+    { path: '/dashboard/map', title: 'Zone Map' },
+    { path: '/dashboard/edge', title: 'Edge Nodes' },
+    { path: '/dashboard/security', title: 'Security' },
+    { path: '/dashboard/storage', title: 'Storage' },
+    { path: '/dashboard/settings', title: 'Settings' },
+];
+export default function DashboardLayout() {
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const location = useLocation();
+    const navigate = useNavigate();
+    const pendingAlertCount = useAlertStore((s) => s.alerts.filter(a => a.status === 'Pending').length);
+    const currentIndex = MODULE_ORDER.findIndex((m) => m.path === location.pathname);
+    const currentModule = MODULE_ORDER[Math.max(0, currentIndex)];
+    const handleBack = () => {
+        if (currentIndex > 0)
+            navigate(MODULE_ORDER[currentIndex - 1].path);
+    };
+    const handleNext = () => {
+        if (currentIndex < MODULE_ORDER.length - 1)
+            navigate(MODULE_ORDER[currentIndex + 1].path);
+    };
+    return (_jsxs("div", { className: "flex h-screen bg-[#020617] text-slate-50 overflow-hidden font-sans selection:bg-blue-500/30", children: [isMobileMenuOpen && (_jsx("div", { className: "fixed inset-0 z-40 bg-black/80 backdrop-blur-sm md:hidden", onClick: () => setIsMobileMenuOpen(false) })), _jsxs("aside", { className: `fixed md:static inset-y-0 left-0 z-50 w-72 bg-[#040D21] border-r border-slate-800 flex flex-col transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`, children: [_jsx("div", { className: "h-16 flex items-center px-6 border-b border-slate-800 shrink-0", children: _jsxs("div", { className: "flex items-center gap-3", children: [_jsx("div", { className: "w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20", children: _jsx(Camera, { className: "w-5 h-5 text-white" }) }), _jsxs("span", { className: "text-xl font-bold tracking-tight text-white", children: ["Vision", _jsx("span", { className: "text-blue-500", children: "AIoT" })] })] }) }), _jsxs("div", { className: "flex-1 overflow-y-auto py-6 px-4 space-y-1", children: [_jsx("p", { className: "px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4", children: "Main Menu" }), _jsx(SidebarItem, { icon: _jsx(LayoutDashboard, {}), label: "Overview", active: location.pathname === '/dashboard', path: "/dashboard" }), _jsx(SidebarItem, { icon: _jsx(Video, {}), label: "Live Cameras", active: location.pathname === '/dashboard/cameras', badge: "4", path: "/dashboard/cameras" }), _jsx(SidebarItem, { icon: _jsx(AlertTriangle, {}), label: "Anomaly Alerts", active: location.pathname === '/dashboard/alerts', badge: pendingAlertCount > 0 ? String(pendingAlertCount) : undefined, badgeColor: "bg-red-500", path: "/dashboard/alerts" }), _jsx(SidebarItem, { icon: _jsx(Activity, {}), label: "Analytics", active: location.pathname === '/dashboard/analytics', path: "/dashboard/analytics" }), _jsx(SidebarItem, { icon: _jsx(MapPin, {}), label: "Zone Map", active: location.pathname === '/dashboard/map', path: "/dashboard/map" }), _jsx("p", { className: "px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mt-8 mb-4", children: "System" }), _jsx(SidebarItem, { icon: _jsx(ServerIcon, {}), label: "Edge Nodes", active: location.pathname === '/dashboard/edge', badge: "3 Active", badgeColor: "bg-emerald-500", path: "/dashboard/edge" }), _jsx(SidebarItem, { icon: _jsx(Shield, {}), label: "Security", active: location.pathname === '/dashboard/security', path: "/dashboard/security" }), _jsx(SidebarItem, { icon: _jsx(Database, {}), label: "Storage", active: location.pathname === '/dashboard/storage', path: "/dashboard/storage" }), _jsx(SidebarItem, { icon: _jsx(Settings, {}), label: "Settings", active: location.pathname === '/dashboard/settings', path: "/dashboard/settings" })] }), _jsx("div", { className: "p-4 border-t border-slate-800", children: _jsxs("button", { onClick: () => {
+                                useAuthStore.getState().logout();
+                                navigate('/');
+                            }, className: "flex items-center gap-3 px-4 py-3 w-full text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all cursor-pointer", children: [_jsx("div", { className: "w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center shrink-0", children: _jsx(X, { className: "w-4 h-4" }) }), _jsx("div", { className: "flex-1 text-left", children: _jsx("p", { className: "text-sm font-medium", children: "Exit Dashboard" }) })] }) })] }), _jsxs("main", { className: "flex-1 flex flex-col min-w-0 bg-[#020617] relative z-0 overflow-y-auto overflow-x-hidden", children: [_jsxs("header", { className: "relative z-[100] h-16 border-b border-slate-800 bg-[#040D21]/80 backdrop-blur-md shrink-0 flex items-center justify-between px-4 sm:px-8 shadow-sm", children: [_jsxs("div", { className: "flex items-center gap-4", children: [_jsx("button", { className: "md:hidden p-2 text-slate-400 hover:text-white", onClick: () => setIsMobileMenuOpen(true), children: _jsx(Menu, { className: "w-5 h-5" }) }), _jsxs("div", { className: "hidden sm:flex items-center bg-slate-900 border border-slate-800 rounded-full px-4 py-1.5 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/50 transition-all", children: [_jsx(Search, { className: "w-4 h-4 text-slate-400 mr-2" }), _jsx("input", { type: "text", placeholder: "Search cameras, zones, alerts...", className: "bg-transparent border-none outline-none text-sm text-white placeholder:text-slate-500 w-64" })] })] }), _jsxs("div", { className: "hidden md:flex items-center bg-slate-900/60 border border-slate-800 rounded-xl p-0.5", children: [_jsx("button", { onClick: handleBack, disabled: currentIndex <= 0, className: "p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 disabled:opacity-20 disabled:hover:bg-transparent transition-all", children: _jsx(ChevronLeft, { className: "w-4 h-4" }) }), _jsx("div", { className: "w-32 text-center text-[11px] font-semibold text-slate-300 truncate px-1.5", children: currentModule?.title || 'Dashboard' }), _jsx("button", { onClick: handleNext, disabled: currentIndex >= MODULE_ORDER.length - 1, className: "p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 disabled:opacity-20 disabled:hover:bg-transparent transition-all", children: _jsx(ChevronRight, { className: "w-4 h-4" }) })] }), _jsxs("div", { className: "flex items-center gap-3", children: [_jsx(NotificationDropdown, {}), _jsx(Link, { to: "/dashboard/security", className: "flex items-center gap-2 cursor-pointer transition-transform hover:scale-105", children: _jsx("div", { className: "w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center text-sm font-bold shadow-lg shadow-blue-500/30", children: "SP" }) })] })] }), _jsx("div", { className: "flex-1 overflow-y-auto overflow-x-hidden relative", children: _jsx(Outlet, {}) })] })] }));
+}
+// Helper Components
+function SidebarItem({ icon, label, active, badge, badgeColor = "bg-blue-500", path = "/dashboard" }) {
+    return (_jsxs(Link, { to: path, className: `w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 cursor-pointer ${active
+            ? 'bg-blue-600/10 text-blue-400 border border-slate-700 shadow-[inset_0_0_20px_rgba(37,99,235,0.05)]'
+            : 'text-slate-400 hover:bg-slate-800/50 hover:text-white border border-transparent'}`, children: [_jsxs("div", { className: "flex items-center gap-3", children: [_jsx("div", { className: `transition-colors ${active ? 'text-blue-400' : 'text-slate-500'}`, children: React.cloneElement(icon, { className: 'w-5 h-5' }) }), _jsx("span", { className: `text-sm font-medium ${active ? 'text-white' : ''}`, children: label })] }), badge && (_jsx("span", { className: `text-[10px] font-bold px-2 py-0.5 rounded-full text-white ${badgeColor}`, children: badge }))] }));
+}

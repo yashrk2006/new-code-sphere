@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import axios from 'axios';
+import { getApiUrl } from '../utils/api';
 
 export interface EdgeMetrics {
     cpu_usage: number;
@@ -24,8 +25,6 @@ interface EdgeState {
     updateNodeTelemetry: (id: string, telemetry: { status: string; metrics: EdgeMetrics; timestamp: string }) => void;
     sendDeviceCommand: (id: string, command: 'restart' | 'update_model') => Promise<void>;
 }
-
-const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export const useEdgeStore = create<EdgeState>((set) => ({
     nodes: [],
@@ -59,7 +58,7 @@ export const useEdgeStore = create<EdgeState>((set) => ({
                 ),
             }));
 
-            await axios.post(`${API_BASE}/api/edge/${id}/command`, { action: command });
+            await axios.post(getApiUrl(`/edge/${id}/command`), { action: command });
         } catch (error) {
             console.error(`Failed to execute ${command} on node ${id}`, error);
             // Revert on failure

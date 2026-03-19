@@ -6,8 +6,7 @@ import {
     Server, Activity, Wifi, WifiOff, RefreshCw, Cpu,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-const API_BASE = import.meta.env.VITE_API_URL || '';
+import { getApiUrl } from '../../utils/api';
 
 export default function EdgeDashboard() {
     const { nodes, setInitialNodes } = useEdgeStore();
@@ -16,7 +15,7 @@ export default function EdgeDashboard() {
     const { isLoading } = useQuery({
         queryKey: ['edge_nodes'],
         queryFn: async () => {
-            const { data } = await axios.get(`${API_BASE}/api/edge`);
+            const { data } = await axios.get(getApiUrl('/edge'));
             setInitialNodes(data);
             return data;
         },

@@ -8,8 +8,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import InviteUserModal from '../../components/InviteUserModal';
-
-const API_BASE = import.meta.env.VITE_API_URL || '';
+import { getApiUrl } from '../../utils/api';
 
 type Role = 'Admin' | 'Operator' | 'Viewer';
 type TabKey = 'users' | 'audit' | 'tokens';
@@ -58,12 +57,12 @@ export default function SecurityDashboard() {
     // ─── Users ──────────────────────────────────────────────────
     const { data: users, isLoading: usersLoading } = useQuery<SystemUser[]>({
         queryKey: ['security_users'],
-        queryFn: async () => (await axios.get(`${API_BASE}/api/security/users`)).data,
+        queryFn: async () => (await axios.get(getApiUrl('/security/users'))).data,
         enabled: activeTab === 'users',
     });
 
     const deleteUserMutation = useMutation({
-        mutationFn: (userId: string) => axios.delete(`${API_BASE}/api/security/users/${userId}`),
+        mutationFn: (userId: string) => axios.delete(getApiUrl(`/security/users/${userId}`)),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['security_users'] });
             queryClient.invalidateQueries({ queryKey: ['security_logs'] });
@@ -73,7 +72,7 @@ export default function SecurityDashboard() {
     // ─── Audit Logs ─────────────────────────────────────────────
     const { data: logs, isLoading: logsLoading } = useQuery<AuditLog[]>({
         queryKey: ['security_logs'],
-        queryFn: async () => (await axios.get(`${API_BASE}/api/security/logs`)).data,
+        queryFn: async () => (await axios.get(getApiUrl('/security/logs'))).data,
         enabled: activeTab === 'audit',
         refetchInterval: 5000, // Fetch every 5s for "live" system events
     });
@@ -81,14 +80,14 @@ export default function SecurityDashboard() {
     // ─── Tokens ─────────────────────────────────────────────────
     const { data: tokens, isLoading: tokensLoading } = useQuery<EdgeToken[]>({
         queryKey: ['security_tokens'],
-        queryFn: async () => (await axios.get(`${API_BASE}/api/security/tokens`)).data,
+        queryFn: async () => (await axios.get(getApiUrl('/security/tokens'))).data,
         enabled: activeTab === 'tokens',
     });
 
     const [newlyGeneratedToken, setNewlyGeneratedToken] = useState<string | null>(null);
 
     const createTokenMutation = useMutation({
-        mutationFn: () => axios.post(`${API_BASE}/api/security/tokens`, { name: `CAM-Node-${Math.floor(Math.random() * 100)}`, scopes: ['inference:push', 'heartbeat:send'] }),
+        mutationFn: () => axios.post(getApiUrl('/security/tokens'), { name: `CAM-Node-${Math.floor(Math.random() * 100)}`, scopes: ['inference:push', 'heartbeat:send'] }),
         onSuccess: (response) => {
             queryClient.invalidateQueries({ queryKey: ['security_tokens'] });
             queryClient.invalidateQueries({ queryKey: ['security_logs'] });
@@ -99,7 +98,7 @@ export default function SecurityDashboard() {
     });
 
     const revokeTokenMutation = useMutation({
-        mutationFn: (id: string) => axios.delete(`${API_BASE}/api/security/tokens/${id}`),
+        mutationFn: (id: string) => axios.delete(getApiUrl(`/security/tokens/${id}`)),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['security_tokens'] });
             queryClient.invalidateQueries({ queryKey: ['security_logs'] });

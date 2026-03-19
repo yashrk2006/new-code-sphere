@@ -1,53 +1,19 @@
 import { create } from 'zustand';
 import axios from 'axios';
 import { getApiUrl } from '../utils/api';
-
-export interface CameraNode {
-    id: string;
-    name: string;
-    description?: string;
-    location?: string;
-    streamUrl: string;
-    status: 'online' | 'offline' | 'error';
-    type: 'thermal' | 'regular' | 'ptz';
-    ip_url?: string;
-    zone?: string;
-    lastActive: string;
-    metrics: {
-        fps: number;
-        resolution: string;
-        bitrate: string;
-        latency: string;
-    };
-    aiFeatures: string[];
-}
-
-interface CameraState {
-    cameras: CameraNode[];
-    isLoading: boolean;
-    error: string | null;
-    gridLayout: number;
-    fetchCameras: () => Promise<void>;
-    addCamera: (camera: Partial<CameraNode>) => Promise<void>;
-    removeCamera: (id: string) => Promise<void>;
-    updateStatus: (id: string, status: 'online' | 'offline' | 'error') => void;
-    setGridLayout: (layout: number) => void;
-}
-
-export const useCameraStore = create<CameraState>((set) => ({
+export const useCameraStore = create((set) => ({
     cameras: [],
     isLoading: false,
     error: null,
-    gridLayout: 2,
-
     fetchCameras: async () => {
         set({ isLoading: true });
         try {
             const { data } = await axios.get(getApiUrl('/cameras'));
             set({ cameras: data, isLoading: false });
-        } catch (error) {
+        }
+        catch (error) {
             console.error('Failed to fetch cameras:', error);
-            set({ 
+            set({
                 error: 'Could not connect to backend camera service. Using local discovery mode.',
                 isLoading: false,
                 cameras: [
@@ -66,34 +32,24 @@ export const useCameraStore = create<CameraState>((set) => ({
             });
         }
     },
-
     addCamera: async (newCam) => {
         try {
             const { data } = await axios.post(getApiUrl('/cameras'), newCam);
             set((state) => ({ cameras: [...state.cameras, data] }));
-        } catch (error) {
+        }
+        catch (error) {
             console.error('Failed to add camera:', error);
         }
     },
-
     removeCamera: async (id) => {
         try {
             await axios.delete(getApiUrl(`/cameras/${id}`));
-            set((state) => ({ 
-                cameras: state.cameras.filter(c => c.id !== id) 
+            set((state) => ({
+                cameras: state.cameras.filter(c => c.id !== id)
             }));
-        } catch (error) {
+        }
+        catch (error) {
             console.error('Failed to remove camera:', error);
         }
-    },
-
-    updateStatus: (id, status) => {
-        set((state) => ({
-            cameras: state.cameras.map((c) => 
-                c.id === id ? { ...c, status, lastActive: new Date().toISOString() } : c
-            )
-        }));
-    },
-
-    setGridLayout: (layout) => set({ gridLayout: layout })
+    }
 }));

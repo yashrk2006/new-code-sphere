@@ -1,62 +1,39 @@
 import { create } from 'zustand';
 import axios from 'axios';
 import { getApiUrl } from '../utils/api';
-
-export interface AppNotification {
-    id: string;
-    title: string;
-    message: string;
-    type: 'info' | 'warning' | 'critical';
-    is_read: boolean;
-    created_at: string;
-}
-
-interface NotificationState {
-    notifications: AppNotification[];
-    unreadCount: number;
-    fetchNotifications: () => Promise<void>;
-    addLiveNotification: (notification: AppNotification) => void;
-    markAsRead: (id: string) => Promise<void>;
-    markAllAsRead: () => Promise<void>;
-}
-
-export const useNotificationStore = create<NotificationState>((set) => ({
+export const useNotificationStore = create((set) => ({
     notifications: [],
     unreadCount: 0,
-
     fetchNotifications: async () => {
         try {
-            const { data } = await axios.get<AppNotification[]>(getApiUrl('/notifications'));
+            const { data } = await axios.get(getApiUrl('/notifications'));
             set({
                 notifications: data,
                 unreadCount: data.filter((n) => !n.is_read).length,
             });
-        } catch (err) {
+        }
+        catch (err) {
             console.error('Failed to fetch notifications', err);
         }
     },
-
-    addLiveNotification: (notification: AppNotification) => {
+    addLiveNotification: (notification) => {
         set((state) => ({
             notifications: [notification, ...state.notifications],
             unreadCount: state.unreadCount + 1,
         }));
     },
-
-    markAsRead: async (id: string) => {
+    markAsRead: async (id) => {
         try {
             await axios.put(getApiUrl(`/notifications/${id}/read`));
             set((state) => ({
-                notifications: state.notifications.map((n) =>
-                    n.id === id ? { ...n, is_read: true } : n
-                ),
+                notifications: state.notifications.map((n) => n.id === id ? { ...n, is_read: true } : n),
                 unreadCount: Math.max(0, state.unreadCount - 1),
             }));
-        } catch (err) {
+        }
+        catch (err) {
             console.error('Failed to mark as read', err);
         }
     },
-
     markAllAsRead: async () => {
         try {
             await axios.put(getApiUrl('/notifications/read-all'));
@@ -64,7 +41,8 @@ export const useNotificationStore = create<NotificationState>((set) => ({
                 notifications: state.notifications.map((n) => ({ ...n, is_read: true })),
                 unreadCount: 0,
             }));
-        } catch (err) {
+        }
+        catch (err) {
             console.error('Failed to mark all as read', err);
         }
     },

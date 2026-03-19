@@ -23,7 +23,7 @@ export default function LiveCameras() {
     };
 
     // Dynamic Grid CSS based on selected layout
-    const gridClasses = {
+    const gridClasses: Record<number, string> = {
         1: 'grid-cols-1 md:grid-cols-1',
         2: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-2',
         3: 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'
@@ -44,6 +44,7 @@ export default function LiveCameras() {
                     </div>
                 </div>
 
+                {/* Grid Layout Toggles */}
                 <div className="flex items-center gap-4">
                     {/* Grid Layout Toggles */}
                     <div className="flex items-center bg-[#0B0F19] p-1 rounded-lg border border-gray-700">

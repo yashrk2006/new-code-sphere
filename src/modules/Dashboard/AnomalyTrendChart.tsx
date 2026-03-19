@@ -1,21 +1,25 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart } from 'recharts';
+import { 
+    XAxis, YAxis, CartesianGrid, Tooltip, 
+    ResponsiveContainer, AreaChart, Area 
+} from 'recharts';
 import { TrendingUp, RefreshCw } from 'lucide-react';
+import { getApiUrl } from '../../utils/api';
 
 interface TrendPoint {
     hour: string;
     alerts: number;
 }
 
-export default function AnomalyTrendChart() {
+export const AnomalyTrendChart = () => {
     const [data, setData] = useState<TrendPoint[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     const fetchTrends = async () => {
         try {
-            const resp = await axios.get(`${import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/stats/anomaly-trends`);
-            setData(resp.data);
+            const { data } = await axios.get(getApiUrl('/stats/anomaly-trends'));
+            setData(data);
         } catch (err) {
             console.error('Failed to fetch anomaly trends', err);
             // Fallback demo data
@@ -31,7 +35,6 @@ export default function AnomalyTrendChart() {
 
     useEffect(() => {
         fetchTrends();
-        // Auto-refresh every 60 seconds
         const interval = setInterval(fetchTrends, 60000);
         return () => clearInterval(interval);
     }, []);
@@ -40,8 +43,7 @@ export default function AnomalyTrendChart() {
     const peakHour = data.reduce((max, d) => d.alerts > max.alerts ? d : max, { hour: '--', alerts: 0 });
 
     return (
-        <div className="bg-[#151923] rounded-xl border border-gray-800 shadow-xl overflow-hidden">
-            {/* Header */}
+        <div className="bg-[#151923] rounded-xl border border-gray-800 shadow-xl overflow-hidden mt-6">
             <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-[#1A1D27]">
                 <div className="flex items-center gap-2">
                     <TrendingUp size={16} className="text-red-400" />
@@ -62,7 +64,6 @@ export default function AnomalyTrendChart() {
                 </div>
             </div>
 
-            {/* Chart */}
             <div className="p-4 h-56">
                 {isLoading ? (
                     <div className="h-full flex items-center justify-center text-gray-600 text-sm">
@@ -116,4 +117,4 @@ export default function AnomalyTrendChart() {
             </div>
         </div>
     );
-}
+};

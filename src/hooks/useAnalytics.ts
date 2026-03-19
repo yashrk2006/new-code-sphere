@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
+import { getApiUrl } from '../utils/api';
 
 // TypeScript definitions for the real data structures expected from the analytics API
 export interface TrendData {
@@ -22,14 +23,12 @@ export interface AnalyticsPayload {
     };
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || '';
-
 export const useAnalytics = (timeRange: '24h' | '7d' | '30d') => {
     return useQuery<AnalyticsPayload>({
         queryKey: ['analytics', timeRange],
         queryFn: async () => {
             // Use relative URL — Vite proxy forwards /api to backend
-            const { data } = await axios.get(`${API_BASE}/api/analytics`, {
+            const { data } = await axios.get(getApiUrl('/analytics'), {
                 params: { range: timeRange },
             });
             return data;

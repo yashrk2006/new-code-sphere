@@ -4,16 +4,22 @@ import { useNotificationStore } from '../../store/useNotificationStore';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { io } from 'socket.io-client';
-import { Activity, Server, Zap, CheckCircle, AlertTriangle, Terminal, FileText, Plus, Shield, MapPin, Search } from 'lucide-react';
+import { 
+    Activity, Shield, AlertTriangle, 
+    Server, Zap, CheckCircle, Terminal, FileText, Plus, Search, MapPin
+} from 'lucide-react';
 import { motion } from 'framer-motion';
 import { LineChart, Line, ResponsiveContainer, YAxis } from 'recharts';
 import LiveInferenceFeed from './LiveInferenceFeed';
 import AddNodeModal from '../../components/AddNodeModal';
-import AnomalyTrendChart from './AnomalyTrendChart';
+import { AnomalyTrendChart } from './AnomalyTrendChart';
+import { getApiUrl, getSocketUrl } from '../../utils/api';
+
+
 
 // WebSocket connection strings (instantiated inside useEffect to prevent SSR hydration mismatch)
-const SYSTEM_WS_URL = `${import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || 'http://localhost:4000'}/system`;
-const MAIN_WS_URL = import.meta.env.VITE_WS_URL || import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const SYSTEM_WS_URL = getSocketUrl();
+const MAIN_WS_URL = getSocketUrl();
 
 export default function CommandCenter() {
     const { alerts, addLiveAlert } = useAlertStore();
@@ -163,20 +169,20 @@ export default function CommandCenter() {
     const handleGenerateReport = async () => {
          try {
              setIsGenerating(true);
-             const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_URL || ''}/api/reports/daily`, {
-                 responseType: 'blob', // Important for downloading files
+             const response = await axios.get(getApiUrl('/reports/generate'), {
+                 responseType: 'blob'
              });
              
              // Create a URL for the blob and trigger download
              const url = window.URL.createObjectURL(new Blob([response.data]));
              const link = document.createElement('a');
              link.href = url;
-             link.setAttribute('download', 'Daily_Report.pdf');
+             link.setAttribute('download', `security_report_${new Date().toISOString().split('T')[0]}.pdf`);
              document.body.appendChild(link);
              link.click();
              link.parentNode?.removeChild(link);
          } catch (error) {
-             console.error('Failed to generate report', error);
+             console.error('Report generation failed:', error);
              alert('Failed to generate report. Please try again later.');
          } finally {
              setIsGenerating(false);

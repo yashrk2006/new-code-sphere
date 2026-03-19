@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import axios from 'axios';
+import { getApiUrl } from '../utils/api';
 
 export type AlertStatus = 'Pending' | 'Investigating' | 'Resolved' | 'False Positive';
 
@@ -22,22 +23,20 @@ interface AlertState {
     updateAlertStatus: (id: string, newStatus: AlertStatus, notes: string) => Promise<void>;
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
-
 export const useAlertStore = create<AlertState>((set) => ({
     alerts: [],
 
     // Triggered by Socket.io when the Python AI pushes a new detection
-    addLiveAlert: (alert) =>
+    addLiveAlert: (alert: AnomalyAlert) =>
         set((state) => ({
             alerts: [alert, ...state.alerts].slice(0, 500), // Keep the UI fast by limiting history
         })),
 
     // Batch set from initial REST load
-    setAlerts: (alerts) => set({ alerts }),
+    setAlerts: (alerts: AnomalyAlert[]) => set({ alerts }),
 
     // Triggered by the dashboard operator to update the database
-    updateAlertStatus: async (id, newStatus, notes) => {
+    updateAlertStatus: async (id: string, newStatus: AlertStatus, notes: string) => {
         try {
             // 1. Optimistically update the UI so the operator sees the change instantly
             set((state) => ({
@@ -49,7 +48,7 @@ export const useAlertStore = create<AlertState>((set) => ({
             }));
 
             // 2. Send the update to the backend
-            await axios.put(`${API_BASE}/api/alerts/${id}`, {
+            await axios.put(getApiUrl(`/alerts/${id}`), {
                 status: newStatus,
                 notes,
             });

@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { getApiUrl } from '../utils/api';
 
 interface InviteUserModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
-const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export default function InviteUserModal({ isOpen, onClose }: InviteUserModalProps) {
   const [formData, setFormData] = useState({ email: '', role: 'Operator' });
@@ -15,7 +14,7 @@ export default function InviteUserModal({ isOpen, onClose }: InviteUserModalProp
 
   const inviteUserMutation = useMutation({
     mutationFn: (data: { email: string; role: string }) => 
-        axios.post(`${API_BASE}/api/security/users/invite`, data),
+        axios.post(getApiUrl('/security/users/invite'), data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['security_users'] });
       queryClient.invalidateQueries({ queryKey: ['security_logs'] });
