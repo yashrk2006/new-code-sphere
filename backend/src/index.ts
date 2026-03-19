@@ -20,6 +20,7 @@ import notificationRoutes from './routes/notificationRoutes';
 import statsRoutes from './routes/statsRoutes';
 import reportRoutes from './routes/reportRoutes';
 import cameraRoutes from './routes/cameraRoutes';
+import citizenRoutes from './routes/citizenRoutes';
 import { addNotification, AppNotification as SystemNotification } from './controllers/notificationController';
 
 import { alertStore, AnomalyAlert } from './controllers/alertController';
@@ -51,6 +52,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/cameras', cameraRoutes);
+app.use('/api/citizen', citizenRoutes(io));
 
 
 // Health check

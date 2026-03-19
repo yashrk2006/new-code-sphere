@@ -1,0 +1,9 @@
+version: "2"
+authtoken: 2elcb7UC2QNsLoDoDiNk1FBKZG0_JXMVCANhaV1ikqBuRDpj
+tunnels:
+  backend:
+    proto: http
+    addr: 4007
+  vision:
+    proto: http
+    addr: 5001
