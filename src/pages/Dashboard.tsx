@@ -16,7 +16,6 @@ const MODULE_ORDER = [
     { path: '/dashboard/alerts', title: 'Anomaly Alerts' },
     { path: '/dashboard/analytics', title: 'Analytics' },
     { path: '/dashboard/map', title: 'Zone Map' },
-    { path: '/dashboard/citizen-hub', title: 'Citizen Hub' },
     { path: '/dashboard/edge', title: 'Edge Nodes' },
     { path: '/dashboard/security', title: 'Security' },
     { path: '/dashboard/storage', title: 'Storage' },
@@ -77,7 +76,6 @@ export default function DashboardLayout() {
                     <SidebarItem icon={<AlertTriangle />} label="Incidents" active={location.pathname === '/dashboard/alerts'} badge={pendingAlertCount > 0 ? String(pendingAlertCount) : undefined} badgeColor="bg-red-500/80 shadow-lg shadow-red-500/20" path="/dashboard/alerts" />
                     <SidebarItem icon={<Activity />} label="Analytics" active={location.pathname === '/dashboard/analytics'} path="/dashboard/analytics" />
                     <SidebarItem icon={<MapPin />} label="Spatial Map" active={location.pathname === '/dashboard/map'} path="/dashboard/map" />
-                    <SidebarItem icon={<Users />} label="Citizen Hub" active={location.pathname === '/dashboard/citizen-hub'} path="/dashboard/citizen-hub" />
 
                     <p className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-10 mb-4 opacity-50">Infrastructure</p>
                     <SidebarItem icon={<ServerIcon />} label="Edge Cluster" active={location.pathname === '/dashboard/edge'} badge="3 Active" badgeColor="bg-emerald-500/80 shadow-lg shadow-emerald-500/20" path="/dashboard/edge" />

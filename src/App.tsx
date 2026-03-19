@@ -14,6 +14,7 @@ import SettingsDashboard from './modules/Settings/SettingsDashboard';
 import CitizenLanding from './citizen/CitizenLanding';
 import CitizenLogin from './citizen/CitizenLogin';
 import CitizenDashboard from './citizen/CitizenDashboard';
+import CitizenLayout from './citizen/CitizenLayout';
 import CitizenIncidentHub from './modules/CitizenHub/CitizenIncidentHub';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
@@ -37,11 +38,14 @@ const AnimatedRoutes = () => {
         <Route path="/login" element={<Login />} />
 
         {/* Citizen Portal Routes */}
-        <Route path="/citizen" element={<CitizenLanding />} />
-        <Route path="/citizen/login" element={<CitizenLogin />} />
-        <Route path="/citizen/dashboard" element={<CitizenDashboard />} />
+        <Route path="/citizen" element={<CitizenLayout />}>
+          <Route index element={<CitizenLanding />} />
+          <Route path="login" element={<CitizenLogin />} />
+          <Route path="dashboard" element={<CitizenDashboard />} />
+          <Route path="hub" element={<CitizenIncidentHub />} />
+        </Route>
 
-        {/* Secure Dashboard Route */}
+        {/* Secure Dashboard Route (Admin) */}
         <Route
           path="/dashboard"
           element={
@@ -59,7 +63,6 @@ const AnimatedRoutes = () => {
           <Route path="security" element={<SecurityDashboard />} />
           <Route path="storage" element={<StorageDashboard />} />
           <Route path="settings" element={<SettingsDashboard />} />
-          <Route path="citizen-hub" element={<CitizenIncidentHub />} />
         </Route>
 
         {/* Fallback */}
