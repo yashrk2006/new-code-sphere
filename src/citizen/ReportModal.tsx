@@ -5,7 +5,7 @@ import { Camera, Video, MapPin, X, ArrowUpCircle, Shield, Users, Trash2, CheckCi
 import { motion, AnimatePresence } from 'framer-motion';
 
 const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
-const API_BASE = rawApiUrl.replace(/\/+$/, '');
+const API_BASE = rawApiUrl.replace(/\/+$/, '').replace(/\/api$/, '');
 
 export default function ReportModal() {
     const navigate = useNavigate();
