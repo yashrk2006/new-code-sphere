@@ -32,48 +32,6 @@ const priorityMap: Record<string, 'CRITICAL' | 'HIGH' | 'NORMAL'> = {
     Municipal: 'NORMAL',
 };
 
-// ─── Async AI enrichment — runs AFTER responding to the citizen ──────────────
-async function runGeminiAnalysis(incident: CitizenIncident, io: Server): Promise<void> {
-    // Mark as processing
-    await supabaseAdmin
-        .from('citizen_incidents')
-        .update({ ai_analysis_status: 'PROCESSING' })
-        .eq('id', incident.id);
-
-    const result = await analyzeIncident({
-        category: incident.category,
-        description: incident.description,
-        image_url: incident.image_url,
-        location: incident.location,
-    });
-
-    // Persist results
-    const { data: updated } = await supabaseAdmin
-        .from('citizen_incidents')
-        .update({
-            ai_credibility_score: result.credibility_score,
-            ai_summary: result.summary,
-            ai_recommended_action: result.recommended_action,
-            ai_image_verdict: result.image_verdict,
-            ai_location_context: result.location_context,
-            ai_analysis_status: result.status,
-            // Upgrade priority if AI gives high credibility + critical category
-            ai_priority: result.credibility_score >= 80 && incident.category === 'Violence'
-                ? 'CRITICAL'
-                : priorityMap[incident.category] || 'NORMAL',
-            is_verified_red_flag: result.credibility_score >= 70 && incident.category === 'Violence',
-        })
-        .eq('id', incident.id)
-        .select()
-        .single();
-
-    if (updated) {
-        // Push enriched incident to admin dashboard in real-time
-        io.emit('citizen_incident_updated', updated);
-        console.log(`[Gemini] ✅ Incident ${incident.id} analyzed — score: ${result.credibility_score}, status: ${result.status}`);
-    }
-}
-
 export const createCitizenControllers = (io: Server) => ({
 
     // POST /api/citizen/report
@@ -84,6 +42,24 @@ export const createCitizenControllers = (io: Server) => ({
             return res.status(400).json({ error: 'category and location are required' });
         }
 
+        // 1. Run Gemini AI pre-verification FIRST
+        const aiResult = await analyzeIncident({
+            category,
+            description: description || '',
+            image_url: image_url || '',
+            location,
+        });
+
+        // 2. If AI determines the image/report is totally completely fake/irrelevant (score < 40)
+        // Reject the submission entirely and don't bother the command center.
+        if (aiResult.credibility_score < 40 && aiResult.status !== 'SKIPPED') {
+            return res.status(400).json({ 
+                error: 'Our AI verification system flagged this report as potentially non-genuine or irrelevant to the selected category.',
+                ai_verdict: aiResult.image_verdict 
+            });
+        }
+
+        // 3. Prepare the incident payload with all AI data pre-populated
         const newIncident = {
             citizen_name: citizen_name || 'Anonymous',
             citizen_phone: citizen_phone || 'Unknown',
@@ -92,12 +68,21 @@ export const createCitizenControllers = (io: Server) => ({
             location,
             image_url: image_url || '',
             status: 'REPORTED',
-            ai_priority: priorityMap[category] || 'NORMAL',
-            is_verified_red_flag: category === 'Violence',
-            ai_analysis_status: 'PENDING',
             timestamp: new Date().toISOString(),
+            // Embed AI decisions from the start
+            ai_priority: aiResult.credibility_score >= 80 && category === 'Violence'
+                ? 'CRITICAL'
+                : priorityMap[category] || 'NORMAL',
+            is_verified_red_flag: aiResult.credibility_score >= 70 && category === 'Violence',
+            ai_credibility_score: aiResult.credibility_score,
+            ai_summary: aiResult.summary,
+            ai_recommended_action: aiResult.recommended_action,
+            ai_image_verdict: aiResult.image_verdict,
+            ai_location_context: aiResult.location_context,
+            ai_analysis_status: aiResult.status,
         };
 
+        // 4. Insert into Supabase
         const { data, error } = await supabaseAdmin
             .from('citizen_incidents')
             .insert(newIncident)
@@ -109,15 +94,9 @@ export const createCitizenControllers = (io: Server) => ({
             return res.status(500).json({ error: error.message });
         }
 
-        // 1. Immediately notify admin of the raw report
+        // 5. Instantly broadcast the fully enriched report to the admin screen
         io.emit('citizen_incident_new', data);
-
-        // 2. Run Gemini analysis in background (non-blocking)
-        setImmediate(() => {
-            runGeminiAnalysis(data as CitizenIncident, io).catch(err =>
-                console.error('[Gemini] Background analysis failed:', err)
-            );
-        });
+        console.log(`[Gemini] ✅ Pre-verified Incident ${data.id} — score: ${aiResult.credibility_score}, status: ${aiResult.status}`);
 
         return res.status(201).json(data);
     },

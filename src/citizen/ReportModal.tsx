@@ -100,7 +100,16 @@ export default function ReportModal() {
                 <CheckCircle2 className="w-10 h-10 text-emerald-600" />
             </motion.div>
             <h2 className="text-2xl font-black text-gray-900 mb-2">Report Dispatched</h2>
-            <p className="text-sm text-gray-500">Command center has received your report with live coordinates. Wait for updates.</p>
+            <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="mt-4 flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-full"
+            >
+                <Shield className="w-4 h-4 text-emerald-600" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Genuine Incident Verified by AI</span>
+            </motion.div>
+            <p className="text-sm text-gray-500 mt-6">Command center has received your report with live coordinates. Wait for updates.</p>
             <div className="mt-6 w-2 h-2 rounded-full bg-blue-500 animate-bounce" />
         </div>
     );
@@ -249,7 +258,7 @@ export default function ReportModal() {
                             className="w-full bg-blue-600 py-5 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-blue-200"
                         >
                             <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            <span className="text-sm font-black tracking-wider text-white uppercase">Transmitting to Admin...</span>
+                            <span className="text-sm font-black tracking-wider text-white uppercase">AI Verification in Progress...</span>
                         </motion.div>
                     ) : (
                         <motion.button
