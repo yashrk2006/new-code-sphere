@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { Server } from 'socket.io';
-import { v4 as uuid } from 'uuid';
+import { supabaseAdmin } from '../lib/supabase';
 
 export interface CitizenIncident {
     id: string;
@@ -18,9 +18,6 @@ export interface CitizenIncident {
     eta?: string;
 }
 
-// In-memory store (swap with DB later)
-export const citizenIncidents: CitizenIncident[] = [];
-
 const priorityMap: Record<string, 'CRITICAL' | 'HIGH' | 'NORMAL'> = {
     Violence: 'CRITICAL',
     Crowd: 'HIGH',
@@ -30,15 +27,14 @@ const priorityMap: Record<string, 'CRITICAL' | 'HIGH' | 'NORMAL'> = {
 export const createCitizenControllers = (io: Server) => ({
 
     // POST /api/citizen/report
-    submitReport: (req: Request, res: Response) => {
+    submitReport: async (req: Request, res: Response) => {
         const { citizen_name, citizen_phone, category, description, image_url, location } = req.body;
 
         if (!category || !location) {
             return res.status(400).json({ error: 'category and location are required' });
         }
 
-        const incident: CitizenIncident = {
-            id: uuid(),
+        const newIncident = {
             citizen_name: citizen_name || 'Anonymous',
             citizen_phone: citizen_phone || 'Unknown',
             category,
@@ -46,47 +42,84 @@ export const createCitizenControllers = (io: Server) => ({
             location,
             image_url: image_url || '',
             status: 'REPORTED',
-            timestamp: new Date().toISOString(),
             ai_priority: priorityMap[category] || 'NORMAL',
             is_verified_red_flag: category === 'Violence',
+            timestamp: new Date().toISOString(),
         };
 
-        citizenIncidents.unshift(incident);
+        const { data, error } = await supabaseAdmin
+            .from('citizen_incidents')
+            .insert(newIncident)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('[citizen/report] Supabase error:', error.message);
+            return res.status(500).json({ error: error.message });
+        }
 
         // Emit real-time event to all connected admin dashboards
-        io.emit('citizen_incident_new', incident);
+        io.emit('citizen_incident_new', data);
 
-        return res.status(201).json(incident);
+        return res.status(201).json(data);
     },
 
     // GET /api/citizen/incidents
-    getIncidents: (_req: Request, res: Response) => {
-        return res.json(citizenIncidents);
+    getIncidents: async (_req: Request, res: Response) => {
+        const { data, error } = await supabaseAdmin
+            .from('citizen_incidents')
+            .select('*')
+            .order('timestamp', { ascending: false });
+
+        if (error) {
+            console.error('[citizen/incidents] Supabase error:', error.message);
+            return res.status(500).json({ error: error.message });
+        }
+
+        return res.json(data);
     },
 
     // POST /api/citizen/incidents/:id/dispatch
-    dispatchIncident: (req: Request, res: Response) => {
+    dispatchIncident: async (req: Request, res: Response) => {
         const { id } = req.params;
-        const incident = citizenIncidents.find(i => i.id === id);
-        if (!incident) return res.status(404).json({ error: 'Incident not found' });
+        const eta = `${Math.floor(Math.random() * 10) + 3} min`;
 
-        incident.status = 'TEAM DISPATCHED';
-        incident.eta = `${Math.floor(Math.random() * 10) + 3} min`;
+        const { data, error } = await supabaseAdmin
+            .from('citizen_incidents')
+            .update({ status: 'TEAM DISPATCHED', eta })
+            .eq('id', id)
+            .select()
+            .single();
 
-        io.emit('citizen_incident_updated', incident);
-        return res.json(incident);
+        if (error) {
+            console.error('[citizen/dispatch] Supabase error:', error.message);
+            return res.status(500).json({ error: error.message });
+        }
+
+        io.emit('citizen_incident_updated', data);
+        return res.json(data);
     },
 
     // POST /api/citizen/incidents/:id/resolve
-    resolveIncident: (req: Request, res: Response) => {
+    resolveIncident: async (req: Request, res: Response) => {
         const { id } = req.params;
-        const incident = citizenIncidents.find(i => i.id === id);
-        if (!incident) return res.status(404).json({ error: 'Incident not found' });
 
-        incident.status = 'RESOLVED';
-        incident.resolution_image_url = req.body.image_url || '';
+        const { data, error } = await supabaseAdmin
+            .from('citizen_incidents')
+            .update({
+                status: 'RESOLVED',
+                resolution_image_url: req.body.image_url || '',
+            })
+            .eq('id', id)
+            .select()
+            .single();
 
-        io.emit('citizen_incident_updated', incident);
-        return res.json(incident);
+        if (error) {
+            console.error('[citizen/resolve] Supabase error:', error.message);
+            return res.status(500).json({ error: error.message });
+        }
+
+        io.emit('citizen_incident_updated', data);
+        return res.json(data);
     },
 });
