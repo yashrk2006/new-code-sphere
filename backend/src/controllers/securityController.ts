@@ -1,16 +1,19 @@
 import { Request, Response } from 'express';
-import { UserModel, AuditLogModel, TokenModel } from '../models';
+import { supabase, writeAuditLog } from '../models';
 
 // ─── Handlers ───────────────────────────────────────────────
 
 /** GET /api/security/users */
 export const getUsers = async (_req: Request, res: Response): Promise<void> => {
     try {
-        const users = await UserModel.find().sort({ created_at: -1 });
-        // Map _id to id for frontend compatibility
-        res.json(users.map(u => ({ ...u.toObject(), id: u._id })));
-    } catch (e) {
-        res.status(500).json({ error: 'Failed to fetch users' });
+        const { data, error } = await supabase
+            .from('security_users')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        res.json(data || []);
+    } catch (e: any) {
+        res.status(500).json({ error: 'Failed to fetch users', detail: e.message });
     }
 };
 
@@ -18,19 +21,22 @@ export const getUsers = async (_req: Request, res: Response): Promise<void> => {
 export const inviteUser = async (req: Request, res: Response): Promise<void> => {
     try {
         const { email, role } = req.body;
-        const newUser = new UserModel({ email, role });
-        await newUser.save();
+        const { data, error } = await supabase
+            .from('security_users')
+            .insert([{ email, role }])
+            .select()
+            .single();
+        if (error) throw error;
 
-        const log = new AuditLogModel({
+        await writeAuditLog({
             action: `New User Invited (${email})`,
             actor_email: 'admin@visionaiot.dev',
             ip_address: req.ip || '0.0.0.0',
         });
-        await log.save();
 
-        res.status(201).json({ ...newUser.toObject(), id: newUser._id });
-    } catch (err) {
-        res.status(500).json({ error: "Failed to invite user" });
+        res.status(201).json(data);
+    } catch (err: any) {
+        res.status(500).json({ error: 'Failed to invite user', detail: err.message });
     }
 };
 
@@ -38,73 +44,93 @@ export const inviteUser = async (req: Request, res: Response): Promise<void> => 
 export const deleteUser = async (req: Request, res: Response): Promise<void> => {
     try {
         const id = req.params.id as string;
-        const result = await UserModel.findByIdAndDelete(id);
-        
-        if (!result) { res.status(404).json({ error: 'User not found' }); return; }
-        
-        const log = new AuditLogModel({
-            action: `User Account Revoked (${result.email})`,
+        const { data: existing, error: findErr } = await supabase
+            .from('security_users')
+            .select('email')
+            .eq('id', id)
+            .single();
+        if (findErr || !existing) {
+            res.status(404).json({ error: 'User not found' });
+            return;
+        }
+
+        const { error } = await supabase.from('security_users').delete().eq('id', id);
+        if (error) throw error;
+
+        await writeAuditLog({
+            action: `User Account Revoked (${existing.email})`,
             actor_email: 'admin@visionaiot.dev',
             ip_address: req.ip || '0.0.0.0',
         });
-        await log.save();
 
         res.json({ success: true });
-    } catch (e) {
-        res.status(500).json({ error: 'Failed to delete user' });
+    } catch (e: any) {
+        res.status(500).json({ error: 'Failed to delete user', detail: e.message });
     }
 };
 
 /** GET /api/security/logs */
 export const getLogs = async (_req: Request, res: Response): Promise<void> => {
     try {
-        const logs = await AuditLogModel.find().sort({ timestamp: -1 }).limit(50);
-        res.json(logs.map(l => ({ ...l.toObject(), id: l._id })));
-    } catch (e) {
-        res.status(500).json({ error: 'Failed to fetch logs' });
+        const { data, error } = await supabase
+            .from('audit_logs')
+            .select('*')
+            .order('timestamp', { ascending: false })
+            .limit(50);
+        if (error) throw error;
+        res.json(data || []);
+    } catch (e: any) {
+        res.status(500).json({ error: 'Failed to fetch logs', detail: e.message });
     }
 };
 
 /** GET /api/security/tokens */
 export const getTokens = async (_req: Request, res: Response): Promise<void> => {
     try {
-        const tokens = await TokenModel.find().sort({ created_at: -1 });
-        res.json(tokens.map(t => ({ ...t.toObject(), id: t._id })));
-    } catch (e) {
-        res.status(500).json({ error: 'Failed to fetch tokens' });
+        const { data, error } = await supabase
+            .from('edge_tokens')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        res.json(data || []);
+    } catch (e: any) {
+        res.status(500).json({ error: 'Failed to fetch tokens', detail: e.message });
     }
 };
 
-/** POST /api/security/tokens — Generate new token */
+/** POST /api/security/tokens — Generate new edge token */
 export const createToken = async (req: Request, res: Response): Promise<void> => {
     try {
         const { name, scopes } = req.body as { name: string; scopes: string[] };
-        
+
         const jwt = require('jsonwebtoken');
         const JWT_SECRET = process.env.JWT_SECRET || 'hackops-crew-secret-key-2026';
-        
+
         // Generate a REAL JSON Web Token
         const tokenString = jwt.sign({ edge_node: name, scopes }, JWT_SECRET, { expiresIn: '365d' });
         const tokenPrefix = `viot_sk_${tokenString.split('.')[2].substring(0, 10)}...`;
 
-        const newToken = new TokenModel({
-            name: name || `key-${Date.now()}`,
-            token_prefix: tokenPrefix,
-            scopes: scopes || ['inference:push'],
-        });
-        await newToken.save();
+        const { data, error } = await supabase
+            .from('edge_tokens')
+            .insert([{
+                name: name || `key-${Date.now()}`,
+                token_prefix: tokenPrefix,
+                scopes: scopes || ['inference:push'],
+            }])
+            .select()
+            .single();
+        if (error) throw error;
 
-        const log = new AuditLogModel({
-            action: `API Token Generated: ${newToken.name}`,
+        await writeAuditLog({
+            action: `API Token Generated: ${name}`,
             actor_email: 'admin@visionaiot.dev',
             ip_address: req.ip || '0.0.0.0',
         });
-        await log.save();
 
         // Return the full token string *only once* in the creation response
-        res.json({ ...newToken.toObject(), id: newToken._id, plain_token: tokenString });
-    } catch (e) {
-        res.status(500).json({ error: 'Failed to create token' });
+        res.json({ ...data, plain_token: tokenString });
+    } catch (e: any) {
+        res.status(500).json({ error: 'Failed to create token', detail: e.message });
     }
 };
 
@@ -112,22 +138,27 @@ export const createToken = async (req: Request, res: Response): Promise<void> =>
 export const revokeToken = async (req: Request, res: Response): Promise<void> => {
     try {
         const id = req.params.id as string;
-        const token = await TokenModel.findById(id);
-        
-        if (!token) { res.status(404).json({ error: 'Token not found' }); return; }
-        
-        token.status = 'revoked';
-        await token.save();
+        const { data: existing, error: findErr } = await supabase
+            .from('edge_tokens')
+            .select('name')
+            .eq('id', id)
+            .single();
+        if (findErr || !existing) {
+            res.status(404).json({ error: 'Token not found' });
+            return;
+        }
 
-        const log = new AuditLogModel({
-            action: `API Token Revoked: ${token.name}`,
+        const { error } = await supabase.from('edge_tokens').update({ status: 'revoked' }).eq('id', id);
+        if (error) throw error;
+
+        await writeAuditLog({
+            action: `API Token Revoked: ${existing.name}`,
             actor_email: 'admin@visionaiot.dev',
             ip_address: req.ip || '0.0.0.0',
         });
-        await log.save();
 
         res.json({ success: true });
-    } catch (e) {
-        res.status(500).json({ error: 'Failed to revoke token' });
+    } catch (e: any) {
+        res.status(500).json({ error: 'Failed to revoke token', detail: e.message });
     }
 };

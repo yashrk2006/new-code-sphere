@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
     Camera, AlertTriangle, Activity, Shield, Database,
     LayoutDashboard, Video, Settings, Search, Menu, X,
@@ -22,7 +22,7 @@ const MODULE_ORDER = [
 ];
 
 export default function DashboardLayout() {
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
     const pendingAlertCount = useAlertStore((s) => s.alerts.filter(a => a.status === 'Pending').length);

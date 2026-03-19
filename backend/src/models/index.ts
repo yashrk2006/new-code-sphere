@@ -1,57 +1,48 @@
-import mongoose from 'mongoose';
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+dotenv.config();
 
-// Ensure the connection is established somewhere in your main backend startup (e.g. index.ts)
-mongoose.connect(process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/visionaiot')
-  .then(() => console.log('✅ Connected to MongoDB (Persistence Layer)'))
-  .catch(err => console.error('❌ MongoDB Connection Error:', err));
+// ─── Supabase Client ─────────────────────────────────────────
+// Replaces all Mongoose/MongoDB usage from the original codebase.
+// Tables managed here: security_users, audit_logs, edge_tokens
+// (Run supabase/migrations/001_init.sql in your Supabase SQL Editor first)
+export const supabase = createClient(
+    process.env.SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+);
 
-// For the "Active Edge Nodes" 0/3 metric
-const nodeSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  ipAddress: { type: String, required: true },
-  status: { type: String, enum: ['UP', 'DOWN', 'MAINTENANCE'], default: 'UP' },
-  modelConfig: { type: String, default: 'YOLOv8m-parking' },
-  lastHeartbeat: { type: Date, default: Date.now }
-});
+// ─── Type Definitions ────────────────────────────────────────
 
-export const NodeModel = mongoose.model('Node', nodeSchema);
+export interface SecurityUser {
+    id?: string;
+    email: string;
+    role: 'Admin' | 'Operator' | 'Viewer';
+    status?: string;
+    created_at?: string;
+}
 
-// For the "Priority Alerts" sidebar
-const anomalySchema = new mongoose.Schema({
-  type: { type: String, required: true }, // e.g., "UNAUTHORIZED VEHICLE"
-  location: { type: String, required: true }, // e.g., "CAM-01"
-  confidence: { type: Number, required: true }, // e.g., 0.87
-  timestamp: { type: Date, default: Date.now },
-  imageUrl: String, // Path to the frame capture for admin review
-  resolved: { type: Boolean, default: false }
-});
+export interface AuditLog {
+    id?: string;
+    action: string;
+    actor_email: string;
+    ip_address: string;
+    timestamp?: string;
+}
 
-export const AnomalyModel = mongoose.model('Anomaly', anomalySchema);
+export interface EdgeToken {
+    id?: string;
+    name: string;
+    token_prefix: string;
+    scopes?: string[];
+    status?: 'active' | 'revoked';
+    created_at?: string;
+    last_used?: string | null;
+}
 
-// For the "Security Dashboard"
-const userSchema = new mongoose.Schema({
-  email: { type: String, required: true },
-  role: { type: String, enum: ['Admin', 'Operator', 'Viewer'], required: true },
-  created_at: { type: Date, default: Date.now },
-  status: { type: String, default: 'Active' }
-});
-
-const auditLogSchema = new mongoose.Schema({
-  action: { type: String, required: true },
-  actor_email: { type: String, required: true },
-  ip_address: { type: String, required: true },
-  timestamp: { type: Date, default: Date.now }
-});
-
-const edgeTokenSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  token_prefix: { type: String, required: true },
-  scopes: { type: [String], default: ['inference:push'] },
-  created_at: { type: Date, default: Date.now },
-  last_used: { type: Date, default: null },
-  status: { type: String, enum: ['active', 'revoked'], default: 'active' }
-});
-
-export const UserModel = mongoose.model('User', userSchema);
-export const AuditLogModel = mongoose.model('AuditLog', auditLogSchema);
-export const TokenModel = mongoose.model('EdgeToken', edgeTokenSchema);
+// ─── Helper: Write Audit Log ─────────────────────────────────
+export async function writeAuditLog(log: AuditLog): Promise<void> {
+    const { error } = await supabase.from('audit_logs').insert([log]);
+    if (error) {
+        console.error('[Audit Log Error]', error.message);
+    }
+}

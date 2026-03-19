@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
-import jwt from 'jwt-simple';
+import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -29,7 +29,7 @@ export const register = async (req: Request, res: Response) => {
             }
         });
 
-        const token = jwt.encode({ id: user.id, role: user.role }, JWT_SECRET);
+        const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
         res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
 
     } catch (error) {
@@ -55,7 +55,7 @@ export const login = async (req: Request, res: Response) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        const token = jwt.encode({ id: user.id, role: user.role }, JWT_SECRET);
+        const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET);
         res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
 
     } catch (error) {

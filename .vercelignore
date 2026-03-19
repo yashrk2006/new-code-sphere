@@ -1,0 +1,8 @@
+# Ignore Python and Backend files from Vercel deployments
+backend/
+vision_engine.py
+render.yaml
+docker-compose.yml
+Dockerfile
+.env*
+! .env.production

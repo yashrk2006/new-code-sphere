@@ -1,4 +1,4 @@
-import React from 'react';
+
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login'; // You will need a basic login form here
 import DashboardLayout from './pages/Dashboard';
@@ -13,7 +13,7 @@ import StorageDashboard from './modules/Storage/StorageDashboard';
 import SettingsDashboard from './modules/Settings/SettingsDashboard';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useSocket } from './hooks/useSocket';
-import { setupAxiosInterceptors, useAuthStore } from './store/useAuthStore';
+import { setupAxiosInterceptors } from './store/useAuthStore';
 
 // Initialize JWT injection into every Axios request
 setupAxiosInterceptors();

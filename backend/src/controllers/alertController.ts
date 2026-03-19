@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { AuditLogModel } from '../models';
+import { writeAuditLog } from '../models';
 
 export type AlertStatus = 'Pending' | 'Investigating' | 'Resolved' | 'False Positive';
 
@@ -16,7 +16,7 @@ export interface AnomalyAlert {
     operator_notes?: string;
 }
 
-// In-memory alert store (stands in for PostgreSQL when DB is unavailable)
+// In-memory alert store (for real-time performance and Socket.IO broadcasting)
 export const alertStore = new Map<string, AnomalyAlert>();
 
 /** GET /api/alerts — return all alerts, newest first */
@@ -53,7 +53,7 @@ export const createAlert = async (req: Request, res: Response): Promise<void> =>
     // ─── JWT Authentication ───
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        res.status(401).json({ error: "Missing or invalid Authorization header" });
+        res.status(401).json({ error: 'Missing or invalid Authorization header' });
         return;
     }
 
@@ -64,22 +64,21 @@ export const createAlert = async (req: Request, res: Response): Promise<void> =>
         const decoded = jwt.verify(token, secret) as any;
         edgeNodeId = decoded.edge_node || req.body.location || 'CAM-04';
 
-        // Log Token Usage to Audit Trail
-        const log = new AuditLogModel({
+        // Log Token Usage to Supabase Audit Trail
+        await writeAuditLog({
             action: `${edgeNodeId} authenticated via Edge Token.`,
             actor_email: 'edge-system',
-            ip_address: req.ip || '0.0.0.0'
+            ip_address: req.ip || '0.0.0.0',
         });
-        await log.save();
     } catch (e) {
         console.log(`[Auth Failed] Invalid Edge Token from ${req.ip}`);
-        res.status(401).json({ error: "Unauthorized Edge Node: Invalid Token" });
+        res.status(401).json({ error: 'Unauthorized Edge Node: Invalid Token' });
         return;
     }
     // ──────────────────────────
 
     const { type, location, confidence, timestamp } = req.body;
-    
+
     // Convert logic from python payload
     const confDec = confidence ? confidence / 100 : 0.85;
 
@@ -91,18 +90,18 @@ export const createAlert = async (req: Request, res: Response): Promise<void> =>
         confidence: confDec,
         image_url: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800',
         status: 'Pending',
-        timestamp: timestamp ? new Date(timestamp * 1000).toISOString() : new Date().toISOString()
+        timestamp: timestamp ? new Date(timestamp * 1000).toISOString() : new Date().toISOString(),
     };
-    
+
     alertStore.set(anomaly.id, anomaly);
     if (alertStore.size > 500) {
         const oldestKey = alertStore.keys().next().value;
         if (oldestKey) alertStore.delete(oldestKey);
     }
-    
+
     console.log(`[Edge Anomaly REST] ${anomaly.type} at ${anomaly.camera_id}`);
-    
-    // Trigger socket broadcast globally
+
+    // Trigger socket broadcast via the exported eventBus
     try {
         const { eventBus } = require('../index');
         eventBus.emit('broadcast_anomaly', anomaly);
