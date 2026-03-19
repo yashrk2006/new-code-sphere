@@ -4,7 +4,8 @@ import axios from 'axios';
 import { Camera, Video, MapPin, X, ArrowUpCircle, Shield, Users, Trash2, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const API_BASE = rawApiUrl.replace(/\/+$/, '');
 
 export default function ReportModal() {
     const navigate = useNavigate();
@@ -86,7 +87,8 @@ export default function ReportModal() {
         } catch (error: any) {
             setIsSubmitting(false);
             console.error('Report submission failed:', error);
-            alert(`Report submission failed: ${error.response?.data?.error || error.message || 'Unknown error'}`);
+            const targetUrl = `${API_BASE}/api/citizen/report`;
+            alert(`Report submission failed to ${targetUrl}\nServer returned: ${error.response?.data?.error || error.message || 'Unknown error'}`);
         }
     };
 

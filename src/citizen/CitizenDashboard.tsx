@@ -8,7 +8,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const API_BASE = rawApiUrl.replace(/\/+$/, '');
 const socket = io(API_BASE);
 
 interface CitizenIncident {
