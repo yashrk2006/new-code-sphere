@@ -76,6 +76,12 @@ io.on('connection', (socket) => {
     };
     eventBus.on('broadcast_anomaly', onBroadcastAnomaly);
 
+    // Bridge: REST bounding boxes → broadcast to specific camera channel
+    const onBroadcastBoxes = (cameraId: string, boxes: any[]) => {
+        io.emit(`boxes_${cameraId}`, boxes);
+    };
+    eventBus.on('broadcast_boxes', onBroadcastBoxes);
+
     // Send initial cameras list
     const initialCameras = [
         { id: 'CAM-04', name: 'Primary Intelligence', status: 'online', lat: 28.6139, lng: 77.2090 },
@@ -187,6 +193,7 @@ io.on('connection', (socket) => {
         clearInterval(systemAlertInterval);
         // clearInterval(boxInterval); // Removed since it is commented out
         eventBus.off('broadcast_anomaly', onBroadcastAnomaly);
+        eventBus.off('broadcast_boxes', onBroadcastBoxes);
     });
 });
 

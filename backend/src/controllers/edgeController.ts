@@ -121,5 +121,24 @@ export const updateHeartbeat = (req: Request, res: Response): void => {
         edgeNodes.set(node, edgeNode);
     }
     
+    
     res.json({ success: true, node: edgeNode });
+};
+
+import { eventBus } from '../index';
+
+/** POST /api/edge/:id/boxes — receive bounding boxes from python Edge Node */
+export const receiveBoxes = (req: Request, res: Response): void => {
+    const cameraId = req.params.id;
+    const { boxes } = req.body;
+    
+    if (!cameraId || !boxes) {
+         res.status(400).json({ error: 'Camera ID and boxes array required' });
+         return;
+    }
+
+    // Broadcast the boxes using the eventBus so Socket.IO can pick it up
+    eventBus.emit('broadcast_boxes', cameraId, boxes);
+    
+    res.json({ success: true, count: boxes.length });
 };
