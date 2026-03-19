@@ -30,18 +30,15 @@ export default function CommandCenter() {
     
     // Dynamic Camera Navigation
     const [currentCamIndex, setCurrentCamIndex] = useState(0);
-    // In a real app, this would be fetched from /api/nodes
-    const [cameras, setCameras] = useState([
-        { id: 'CAM-04', name: 'Primary Surveillance', streamUrl: 'http://192.168.1.8:8080/video', fps: 30 },
-        { id: 'CAM-01', name: 'North Entrance', streamUrl: 'http://192.168.1.5:8080/video', fps: 24 },
-        { id: 'CAM-02', name: 'Loading Dock', streamUrl: 'http://192.168.0.5:8080/video', fps: 24 },
-    ]);
+    const [cameras, setCameras] = useState<{id: string, name: string, streamUrl: string, fps: number}[]>([]);
 
     const handleNextCamera = () => {
+        if (cameras.length === 0) return;
         setCurrentCamIndex((prev) => (prev + 1) % cameras.length);
     };
 
     const handleBackCamera = () => {
+        if (cameras.length === 0) return;
         setCurrentCamIndex((prev) => (prev - 1 + cameras.length) % cameras.length);
     };
 
@@ -49,22 +46,19 @@ export default function CommandCenter() {
     
     // Real-Time Dashboard States
     const [activeNodes, setActiveNodes] = useState(0);
-    const [totalNodes, setTotalNodes] = useState(3);
+    const [totalNodes, setTotalNodes] = useState(0);
     const [avgLatency, setAvgLatency] = useState(0);
     const [healthPercent, setHealthPercent] = useState(100);
     const [latencyTrend, setLatencyTrend] = useState<{value: number}[]>(Array(5).fill({value: 0}));
 
-    // 1. Initial API Fetching for historical KPIs (optional baseline)
+    // 1. Initial API Fetching for historical KPIs
     const { data: stats } = useQuery({
         queryKey: ['command_center_stats'],
         queryFn: async () => {
-             // Fallback demo data baseline
-             return {
-                 totalAnomalies: 221, criticalAnomalies: 0,
-                 anomalyTrend: [{ value: 5 }, { value: 7 }, { value: 3 }, { value: 8 }, { value: 12 }],
-             };
+             const res = await axios.get(getApiUrl('/stats/overview'));
+             return res.data;
         },
-        refetchInterval: false,
+        refetchInterval: 30000,
     });
 
     // 2. Listen for Real-Time Telemetry
@@ -110,12 +104,23 @@ export default function CommandCenter() {
             }
         });
 
+        mainSocket.on('init_cameras', (initialCameras) => {
+            // Ensure CAM-04 points to local VITE_CAMERA_URL if not provided
+            const enriched = initialCameras.map((cam: any) => {
+                if (cam.id === 'CAM-04' && !cam.streamUrl) {
+                    return { ...cam, streamUrl: 'http://localhost:5001/video_feed', fps: 30 };
+                }
+                return cam;
+            });
+            setCameras(enriched);
+        });
+
         // AI Inference Updates (Latency tracking)
         mainSocket.on('boxes_CAM-04', () => {
-            // Simulate a rolling latency calculation based on inference arrivals
-            const mockCurrentLatency = 8 + Math.random() * 4;
+            // Tracking is handled inside LiveInferenceFeed, 
+            // but we update the dashboard avg for KPI
             setAvgLatency(prev => {
-                const newAvg = (prev * 0.9) + (mockCurrentLatency * 0.1); // smoothing
+                const newAvg = (prev * 0.9) + (12 * 0.1); // using a realistic baseline of 12ms for local
                 setLatencyTrend(t => [...t.slice(1), { value: newAvg }]);
                 return newAvg;
             });
@@ -161,7 +166,7 @@ export default function CommandCenter() {
             a.severity.toLowerCase().includes(q)
         );
     }).slice(0, 6);
-    const totalAnomaliesLive = (stats?.totalAnomalies || 0) + alerts.length;
+    const totalAnomaliesLive = (stats?.totalAnomalies24h || 0) + alerts.length;
     const criticalAnomaliesLive = alerts.filter(a => a.severity === 'Critical').length;
 
     const [isGenerating, setIsGenerating] = useState(false);

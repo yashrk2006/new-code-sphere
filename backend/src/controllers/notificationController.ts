@@ -34,7 +34,11 @@ seed.forEach((n) => notificationStore.set(n.id, n));
 /** GET /api/notifications */
 export const getNotifications = (_req: Request, res: Response): void => {
     const all = Array.from(notificationStore.values())
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        .sort((a, b) => {
+            const timeA = new Date(a.created_at || 0).getTime();
+            const timeB = new Date(b.created_at || 0).getTime();
+            return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+        });
     res.json(all);
 };
 

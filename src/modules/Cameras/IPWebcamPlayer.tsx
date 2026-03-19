@@ -9,8 +9,10 @@ export default function IPWebcamPlayer({ camera }: { camera: CameraNode }) {
     const containerRef = useRef<HTMLDivElement>(null);
     const { removeCamera, updateStatus } = useCameraStore();
 
-    // IP Webcam specific endpoints
-    const streamUrl = `${camera.ip_url}/video`;
+    // IP Webcam specific endpoints or custom Vision Engine feed
+    const streamUrl = camera.ip_url?.includes('video_feed') 
+        ? camera.ip_url 
+        : `${camera.ip_url}/video`;
 
     // Send HTTP command directly to the IP Webcam
     const sendCommand = async (endpoint: string) => {

@@ -43,7 +43,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/alerts', alertRoutes);
 app.use('/api/analytics', analyticsRoutes);
-app.use('/api/edge', edgeRoutes);
+app.use('/api/edge', edgeRoutes(io));
 app.use('/api/security', securityRoutes);
 app.use('/api/storage', storageRoutes);
 app.use('/api/settings', settingsRoutes);
@@ -75,6 +75,7 @@ io.on('connection', (socket) => {
 
     // Send initial cameras list
     const initialCameras = [
+        { id: 'CAM-04', name: 'Primary Intelligence', status: 'online', lat: 28.6139, lng: 77.2090 },
         { id: 'CAM-01', name: 'Main Gate', status: 'online', lat: 28.6139, lng: 77.2090 },
         { id: 'CAM-02', name: 'Perimeter Fence A', status: 'online', lat: 28.6186, lng: 77.2153 },
         { id: 'CAM-03', name: 'Parking Structure', status: 'offline', lat: 28.6100, lng: 77.2000 }
@@ -89,6 +90,7 @@ io.on('connection', (socket) => {
         'https://images.unsplash.com/photo-1494515843206-f3117d3f51b7?w=800',
     ];
 
+    /*
     const mockAnomalyInterval = setInterval(() => {
         const severities: Array<'Low' | 'Medium' | 'Critical'> = ['Low', 'Medium', 'Critical'];
         const types: Array<AnomalyAlert['type']> = ['PARKING_VIOLATION', 'CAPACITY_EXCEEDED', 'UNAUTHORIZED_VEHICLE', 'SUSPICIOUS_BEHAVIOR'];
@@ -109,6 +111,7 @@ io.on('connection', (socket) => {
         }
         io.emit('new_anomaly', anomaly);
     }, 8000);
+    */
 
     // Mock Edge Heartbeat
     const edgeHeartbeatInterval = setInterval(() => {
@@ -128,6 +131,7 @@ io.on('connection', (socket) => {
     }, 10000);
 
     // Mock AI Bounding Boxes (simulates vision_engine.py output)
+    /*
     const boxLabels = [
         { label: 'Vehicle', color: '#22C55E' },
         { label: 'Person', color: '#3B82F6' },
@@ -152,6 +156,7 @@ io.on('connection', (socket) => {
         });
         io.emit('boxes_CAM-04', boxes);
     }, 3000);
+    */
 
     // Mock System Notifications
     const systemAlertTemplates: Array<{ title: string; message: string; type: SystemNotification['type'] }> = [
@@ -174,10 +179,10 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);
-        clearInterval(mockAnomalyInterval);
+        // clearInterval(mockAnomalyInterval); // Removed since it is commented out
         clearInterval(edgeHeartbeatInterval);
         clearInterval(systemAlertInterval);
-        clearInterval(boxInterval);
+        // clearInterval(boxInterval); // Removed since it is commented out
         eventBus.off('broadcast_anomaly', onBroadcastAnomaly);
     });
 });

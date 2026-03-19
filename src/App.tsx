@@ -1,6 +1,6 @@
 
 import LandingPage from './pages/LandingPage';
-import Login from './pages/Login'; // You will need a basic login form here
+import Login from './pages/Login';
 import DashboardLayout from './pages/Dashboard';
 import DashboardOverview from './modules/Dashboard/DashboardOverview';
 import LiveCameras from './modules/Cameras/LiveCameras';
@@ -11,29 +11,35 @@ import EdgeDashboard from './modules/EdgeNodes/EdgeDashboard';
 import SecurityDashboard from './modules/Security/SecurityDashboard';
 import StorageDashboard from './modules/Storage/StorageDashboard';
 import SettingsDashboard from './modules/Settings/SettingsDashboard';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import CitizenLanding from './citizen/CitizenLanding';
+import CitizenLogin from './citizen/CitizenLogin';
+import CitizenDashboard from './citizen/CitizenDashboard';
+import CitizenIncidentHub from './modules/CitizenHub/CitizenIncidentHub';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useSocket } from './hooks/useSocket';
 import { setupAxiosInterceptors } from './store/useAuthStore';
 
-// Initialize JWT injection into every Axios request
 setupAxiosInterceptors();
 
-// A protective wrapper that kicks out unauthenticated users
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  // const { token } = useAuthStore();
-  // if (!token) return <Navigate to="/login" replace />;
   return children;
 };
 
-export default function App() {
-  useSocket(); // Initialize real-time WebSocket connection to Node.js backend
-
+const AnimatedRoutes = () => {
+  const location = useLocation();
+  
   return (
-    <Router>
-      <Routes>
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
         {/* Public Routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
+
+        {/* Citizen Portal Routes */}
+        <Route path="/citizen" element={<CitizenLanding />} />
+        <Route path="/citizen/login" element={<CitizenLogin />} />
+        <Route path="/citizen/dashboard" element={<CitizenDashboard />} />
 
         {/* Secure Dashboard Route */}
         <Route
@@ -53,11 +59,22 @@ export default function App() {
           <Route path="security" element={<SecurityDashboard />} />
           <Route path="storage" element={<StorageDashboard />} />
           <Route path="settings" element={<SettingsDashboard />} />
+          <Route path="citizen-hub" element={<CitizenIncidentHub />} />
         </Route>
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+    </AnimatePresence>
+  );
+};
+
+export default function App() {
+  useSocket();
+
+  return (
+    <Router>
+      <AnimatedRoutes />
     </Router>
   );
 }

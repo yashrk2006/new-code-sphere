@@ -94,22 +94,26 @@ export const AnomalyTrendChart = () => {
                             />
                             <Tooltip
                                 contentStyle={{ 
-                                    backgroundColor: '#0d0e12', 
-                                    border: '1px solid #374151',
-                                    borderRadius: '8px',
+                                    backgroundColor: 'rgba(13, 14, 18, 0.8)', 
+                                    backdropFilter: 'blur(12px)',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    borderRadius: '12px',
                                     fontSize: '12px',
+                                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)'
                                 }}
-                                itemStyle={{ color: '#ef4444' }}
-                                labelStyle={{ color: '#9ca3af', fontWeight: 'bold' }}
+                                itemStyle={{ color: '#F87171' }}
+                                labelStyle={{ color: '#94A3B8', fontWeight: 'bold', marginBottom: '4px' }}
+                                cursor={{ stroke: 'rgba(239, 68, 68, 0.2)', strokeWidth: 2 }}
                             />
                             <Area
                                 type="monotone"
                                 dataKey="alerts"
                                 stroke="#EF4444"
-                                strokeWidth={2}
+                                strokeWidth={3}
                                 fill="url(#alertGradient)"
-                                dot={{ r: 3, fill: '#EF4444', strokeWidth: 0 }}
-                                activeDot={{ r: 5, fill: '#EF4444', stroke: '#fff', strokeWidth: 2 }}
+                                dot={{ r: 4, fill: '#EF4444', strokeWidth: 0 }}
+                                activeDot={{ r: 6, fill: '#EF4444', stroke: '#fff', strokeWidth: 2 }}
+                                animationDuration={1500}
                             />
                         </AreaChart>
                     </ResponsiveContainer>
